@@ -1,0 +1,61 @@
+{
+  "id": "silva_ltda/2026-02-02_101907",
+  "created_at": "2026-02-02T10:19:07.208043",
+  "nome_cliente": "Alex Silva",
+  "nome_empresa": "Silva LTDA",
+  "input": {
+    "nome_cliente": "Alex Silva",
+    "nome_empresa": "Silva LTDA",
+    "rendimento_mensal": 50000.0,
+    "despesas_anuais": {
+      "secretaria": 24000.0,
+      "aluguel_condominio": 24000.0,
+      "contador": 12000.0,
+      "outras_despesas": 0.0
+    },
+    "pro_labore": 15000.0,
+    "iss_fixo": 1500.0,
+    "salario_minimo": 1612.0
+  },
+  "output": {
+    "pf": {
+      "rendimento_anual": 600000.0,
+      "inss": 5122.4,
+      "irpf": 146678.84,
+      "iss": 1500.0,
+      "total_tributos": 153301.24,
+      "aliquota_efetiva": 0.25550206666666664,
+      "receita_liquida": 380076.36,
+      "renda_liquida": 533377.6,
+      "total_despesas": 66622.4
+    },
+    "pj": {
+      "base_presumida": 192000.0,
+      "irpj": 28800.0,
+      "irpj_adicional": 0.0,
+      "irpj_total": 28800.0,
+      "csll": 17280.0,
+      "irpj_csll": 46080.0,
+      "pis": 3900.0,
+      "cofins": 18000.0,
+      "cbs": 0.0,
+      "ibs": 0.0,
+      "iss": 1500.0,
+      "inss_folha": 4800.04,
+      "total_impostos": 74280.04,
+      "lucro_liquido": 45719.95999999996,
+      "dividendos": 45719.95999999996,
+      "irpf_m_percent": -9.238000666666668,
+      "impacto_pf": -4223.61020959973,
+      "aliquota_efetiva_final": 0.11676071631733377,
+      "pro_labore_liquido": 160200.0
+    },
+    "comparativo": {
+      "economia_tributaria": 83244.81020959973,
+      "aliquota_pf": 0.25550206666666664,
+      "aliquota_pj_final": 0.11676071631733377,
+      "receita_liquida_pf": 380076.36,
+      "lucro_liquido_pj": 45719.95999999996
+    }
+  }
+}

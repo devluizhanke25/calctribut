@@ -1,0 +1,61 @@
+{
+  "id": "hnk_education/2026-02-01_023316",
+  "created_at": "2026-02-01T02:33:16.937329",
+  "nome_cliente": "Luiz Fernando Pereira",
+  "nome_empresa": "HNK Education",
+  "input": {
+    "nome_cliente": "Luiz Fernando Pereira",
+    "nome_empresa": "HNK Education",
+    "rendimento_mensal": 30000.0,
+    "despesas_anuais": {
+      "secretaria": 24000.0,
+      "aluguel_condominio": 35000.0,
+      "contador": 12000.0,
+      "outras_despesas": 0.0
+    },
+    "pro_labore": 15000.0,
+    "iss_fixo": 1500.0,
+    "salario_minimo": 1651.0
+  },
+  "output": {
+    "pf": {
+      "rendimento_anual": 360000.0,
+      "inss": 5130.2,
+      "irpf": 77651.695,
+      "iss": 1500.0,
+      "total_tributos": 84281.895,
+      "aliquota_efetiva": 0.23411637500000002,
+      "receita_liquida": 198087.90499999997,
+      "renda_liquida": 282369.8,
+      "total_despesas": 77630.2
+    },
+    "pj": {
+      "base_presumida": 115200.0,
+      "irpj": 17280.0,
+      "irpj_adicional": 0.0,
+      "irpj_total": 17280.0,
+      "csll": 10368.0,
+      "irpj_csll": 27648.0,
+      "pis": 2340.0,
+      "cofins": 10800.0,
+      "cbs": 0.0,
+      "ibs": 0.0,
+      "iss": 1500.0,
+      "inss_folha": 4800.04,
+      "total_impostos": 47088.04,
+      "lucro_liquido": -189088.03999999998,
+      "dividendos": -189088.03999999998,
+      "irpf_m_percent": -13.151467333333333,
+      "impacto_pf": 24867.851811840264,
+      "aliquota_efetiva_final": 0.19987747725511185,
+      "pro_labore_liquido": 160200.0
+    },
+    "comparativo": {
+      "economia_tributaria": 12326.003188159739,
+      "aliquota_pf": 0.23411637500000002,
+      "aliquota_pj_final": 0.19987747725511185,
+      "receita_liquida_pf": 198087.90499999997,
+      "lucro_liquido_pj": -189088.03999999998
+    }
+  }
+}

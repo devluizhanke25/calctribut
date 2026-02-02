@@ -1,0 +1,23 @@
+{
+  "version": "2026-01",
+  "pf": {
+    "irpf_flat": 0.275,
+    "inss_pf_rate": 0.2,
+    "prolabore_inss_rate": 0.11
+  },
+  "pj": {
+    "presumed_profit_rate": 0.32,
+    "irpj_rate": 0.15,
+    "irpj_additional_rate": 0.1,
+    "irpj_additional_threshold": 240000,
+    "csll_rate": 0.09,
+    "pis_rate": 0.0065,
+    "cofins_rate": 0.03,
+    "cbs_rate": 0.009,
+    "ibs_rate": 0.001,
+    "inss_folha_rate": 0.2,
+    "cbs_enabled": false,
+    "ibs_enabled": false,
+    "double_expense_in_pj": true
+  }
+}

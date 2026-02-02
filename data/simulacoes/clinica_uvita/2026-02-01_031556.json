@@ -1,0 +1,61 @@
+{
+  "id": "clinica_uvita/2026-02-01_031556",
+  "created_at": "2026-02-01T03:15:56.254924",
+  "nome_cliente": "José Pereira",
+  "nome_empresa": "Clinica UVITA",
+  "input": {
+    "nome_cliente": "José Pereira",
+    "nome_empresa": "Clinica UVITA",
+    "rendimento_mensal": 15000.0,
+    "despesas_anuais": {
+      "secretaria": 12000.0,
+      "aluguel_condominio": 12000.0,
+      "contador": 2000.0,
+      "outras_despesas": 0.0
+    },
+    "pro_labore": 6000.0,
+    "iss_fixo": 800.0,
+    "salario_minimo": 1651.0
+  },
+  "output": {
+    "pf": {
+      "rendimento_anual": 180000.0,
+      "inss": 2730.2,
+      "irpf": 41379.195,
+      "iss": 800.0,
+      "total_tributos": 44909.395,
+      "aliquota_efetiva": 0.24949663888888887,
+      "receita_liquida": 105560.405,
+      "renda_liquida": 150469.8,
+      "total_despesas": 29530.2
+    },
+    "pj": {
+      "base_presumida": 57600.0,
+      "irpj": 8640.0,
+      "irpj_adicional": 0.0,
+      "irpj_total": 8640.0,
+      "csll": 5184.0,
+      "irpj_csll": 13824.0,
+      "pis": 1170.0,
+      "cofins": 5400.0,
+      "cbs": 0.0,
+      "ibs": 0.0,
+      "iss": 800.0,
+      "inss_folha": 2400.0400000000004,
+      "total_impostos": 23594.04,
+      "lucro_liquido": -39594.04000000001,
+      "dividendos": -39594.04000000001,
+      "irpf_m_percent": -10.659900666666667,
+      "impacto_pf": 4220.685333920268,
+      "aliquota_efetiva_final": 0.1545262518551126,
+      "pro_labore_liquido": 64080.0
+    },
+    "comparativo": {
+      "economia_tributaria": 17094.669666079728,
+      "aliquota_pf": 0.24949663888888887,
+      "aliquota_pj_final": 0.1545262518551126,
+      "receita_liquida_pf": 105560.405,
+      "lucro_liquido_pj": -39594.04000000001
+    }
+  }
+}

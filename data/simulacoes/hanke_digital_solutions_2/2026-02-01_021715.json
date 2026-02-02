@@ -1,0 +1,61 @@
+{
+  "id": "hanke_digital_solutions_2/2026-02-01_021715",
+  "created_at": "2026-02-01T02:17:15.133681",
+  "nome_cliente": "Luiz Fernando Nunes",
+  "nome_empresa": "Hanke Digital Solutions 2",
+  "input": {
+    "nome_cliente": "Luiz Fernando Nunes",
+    "nome_empresa": "Hanke Digital Solutions 2",
+    "rendimento_mensal": 80000.0,
+    "despesas_anuais": {
+      "secretaria": 24000.0,
+      "aluguel_condominio": 30000.0,
+      "contador": 12000.0,
+      "outras_despesas": 0.0
+    },
+    "pro_labore": 19452.0,
+    "iss_fixo": 1500.0,
+    "salario_minimo": 1621.0
+  },
+  "output": {
+    "pf": {
+      "rendimento_anual": 960000.0,
+      "inss": 5124.2,
+      "irpf": 244028.34500000003,
+      "iss": 1500.0,
+      "total_tributos": 250652.54500000004,
+      "aliquota_efetiva": 0.2610964010416667,
+      "receita_liquida": 636723.255,
+      "renda_liquida": 887375.8,
+      "total_despesas": 72624.2
+    },
+    "pj": {
+      "base_presumida": 307200.0,
+      "irpj": 46080.0,
+      "irpj_adicional": 6720.0,
+      "irpj_total": 52800.0,
+      "csll": 27648.0,
+      "irpj_csll": 80448.0,
+      "pis": 6240.0,
+      "cofins": 28800.0,
+      "cbs": 0.0,
+      "ibs": 0.0,
+      "iss": 1500.0,
+      "inss_folha": 4800.04,
+      "total_impostos": 121788.04,
+      "lucro_liquido": 239363.95999999996,
+      "dividendos": 239363.95999999996,
+      "irpf_m_percent": -6.010600666666667,
+      "impacto_pf": -14387.211775519732,
+      "aliquota_efetiva_final": 0.11187586273383361,
+      "pro_labore_liquido": 207747.36
+    },
+    "comparativo": {
+      "economia_tributaria": 143251.71677551977,
+      "aliquota_pf": 0.2610964010416667,
+      "aliquota_pj_final": 0.11187586273383361,
+      "receita_liquida_pf": 636723.255,
+      "lucro_liquido_pj": 239363.95999999996
+    }
+  }
+}
