@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Estimativas PF x PJ Brasil Salomão</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="ambient"></div>
+  <div class="app-shell">
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <img src="/img/logo.png" alt="Brasil Salomão" class="brand-logo" />
+        <span class="brand-pill">Brasil Salomão</span>
+        <h1>Estimativas PF x PJ</h1>
+        <p>Simulador Financeiro-Tributário</p>
+        <button class="sidebar-close" id="sidebar-close" aria-label="Fechar menu">?</button>
+      </div>
+      <nav class="side-nav" role="tablist">
+        <button class="tab active" data-tab="premissas" role="tab" aria-selected="true">Premissas</button>
+        <button class="tab" data-tab="pf" role="tab" aria-selected="false">Pessoa Física</button>
+        <button class="tab" data-tab="pj" role="tab" aria-selected="false">Pessoa Jurídica</button>
+        <button class="tab" data-tab="comparativo" role="tab" aria-selected="false">Comparativo Final</button>
+        <button class="tab" data-tab="historico" role="tab" aria-selected="false">Histórico</button>
+        <button class="tab" data-tab="analise" role="tab" aria-selected="false">Análise</button>
+        <button class="tab" data-tab="parametros" role="tab" aria-selected="false">Parâmetros</button>
+        <button class="tab" data-tab="consolidacao" role="tab" aria-selected="false">Consolidação</button>
+      </nav>
+      <button id="logout-btn" class="ghost logout">Sair</button>
+      <div class="status" aria-live="polite">
+        <span id="status-indicator" class="status-pill">Pronto para simular</span>
+        <span id="status-loading" class="status-loading hidden">Calculando…</span>
+        <span id="status-error" class="status-error hidden"></span>
+      </div>
+    </aside>
+
+    <main class="container">
+      <div class="topbar">
+        <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Alternar menu">?</button>
+        <div class="topbar-title">
+          <span>Estimativas PF x PJ Brasil Salomão</span>
+        </div>
+      </div>
+
+    <section class="panel active" id="premissas" role="tabpanel">
+      <div class="grid">
+        <div class="card form-card">
+          <div class="card-header">
+            <h2>Entradas financeiras</h2>
+            <button id="reset" class="ghost">Resetar simulação</button>
+          </div>
+
+          <!-- Heurística: prevenção de erros com validação imediata e feedback visual -->
+          <form id="premissas-form" novalidate>
+            <div class="field">
+              <label for="nome_cliente">Nome do cliente</label>
+              <div class="input-wrap">
+                <input id="nome_cliente" type="text" />
+                <span class="help" data-tip="Identificação do cliente para o relatório em PDF.">?</span>
+              </div>
+              <small class="error" id="nome_cliente_error"></small>
+            </div>
+
+            <div class="field">
+              <label for="nome_empresa">Nome da empresa</label>
+              <div class="input-wrap">
+                <input id="nome_empresa" type="text" />
+                <span class="help" data-tip="Empresa responsável pela simulação.">?</span>
+              </div>
+              <small class="error" id="nome_empresa_error"></small>
+            </div>
+
+            <div class="actions">
+              <button id="save-session" class="primary">Salvar simulação</button>
+              <p class="muted">Salva o JSON da análise atual.</p>
+            </div>
+
+            <div class="field">
+              <label for="rendimento_mensal">Rendimento mensal (R$)</label>
+              <div class="input-wrap">
+                <input id="rendimento_mensal" class="money-input" inputmode="decimal" />
+                <span class="help" data-tip="Valor bruto mensal recebido como pessoa física ou faturamento da empresa.">?</span>
+              </div>
+              <small class="error" id="rendimento_mensal_error"></small>
+            </div>
+
+            <div class="field">
+              <label for="pro_labore">Pró-labore mensal (R$)</label>
+              <div class="input-wrap">
+                <input id="pro_labore" class="money-input" inputmode="decimal" />
+                <span class="help" data-tip="Salário mensal do sócio. Na planilha, o pró-labore padrão é 1 salário mínimo.">?</span>
+              </div>
+              <small class="error" id="pro_labore_error"></small>
+            </div>
+
+            <div class="field">
+              <label for="iss_fixo">ISS fixo anual (R$)</label>
+              <div class="input-wrap">
+                <input id="iss_fixo" class="money-input" inputmode="decimal" />
+                <span class="help" data-tip="ISS fixo anual conforme regime do município.">?</span>
+              </div>
+              <small class="error" id="iss_fixo_error"></small>
+            </div>
+
+            <div class="field">
+              <label for="salario_minimo">Salário mínimo mensal (R$)</label>
+              <div class="input-wrap">
+                <input id="salario_minimo" class="money-input" inputmode="decimal" />
+                <span class="help" data-tip="Parâmetro de referência. Na planilha, impacta INSS e pró-labore.">?</span>
+              </div>
+              <small class="error" id="salario_minimo_error"></small>
+            </div>
+
+            <div class="divider"></div>
+            <h3>Despesas anuais</h3>
+
+            <div class="field">
+              <label for="secretaria">Secretaria (R$)</label>
+              <div class="input-wrap">
+                <input id="secretaria" class="money-input" inputmode="decimal" />
+                <span class="help" data-tip="Custos anuais com secretaria ou assistente.">?</span>
+              </div>
+              <small class="error" id="secretaria_error"></small>
+            </div>
+
+            <div class="field">
+              <label for="aluguel_condominio">Aluguel/condomínio (R$)</label>
+              <div class="input-wrap">
+                <input id="aluguel_condominio" class="money-input" inputmode="decimal" />
+                <span class="help" data-tip="Despesas anuais de estrutura física.">?</span>
+              </div>
+              <small class="error" id="aluguel_condominio_error"></small>
+            </div>
+
+            <div class="field">
+              <label for="contador">Contador (R$)</label>
+              <div class="input-wrap">
+                <input id="contador" class="money-input" inputmode="decimal" />
+                <span class="help" data-tip="Honorários contábeis anuais.">?</span>
+              </div>
+              <small class="error" id="contador_error"></small>
+            </div>
+
+            <div class="field">
+              <label for="outras_despesas">Outras despesas (R$)</label>
+              <div class="input-wrap">
+                <input id="outras_despesas" class="money-input" inputmode="decimal" />
+                <span class="help" data-tip="Outras despesas recorrentes necessárias para operar.">?</span>
+              </div>
+              <small class="error" id="outras_despesas_error"></small>
+            </div>
+          </form>
+        </div>
+
+        <div class="card info-card">
+          <h2>Resumo rápido</h2>
+          <p class="muted">Atualização automática a cada alteração.</p>
+          <div class="mini-grid">
+            <div>
+              <span class="label">Rendimento anual</span>
+              <strong id="resumo-rendimento">R$ 0,00</strong>
+            </div>
+            <div>
+              <span class="label">Despesas anuais</span>
+              <strong id="resumo-despesas">R$ 0,00</strong>
+            </div>
+            <div>
+              <span class="label">Pró-labore anual</span>
+              <strong id="resumo-prolabore">R$ 0,00</strong>
+            </div>
+          </div>
+          <div class="notice">
+            <p><strong>Assunção:</strong> Lucro Presumido padrão para serviços (presunção 32%).</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="pf" role="tabpanel">
+      <div class="panel-header">
+        <h2>Pessoa Física</h2>
+        <p class="muted">Cálculo anual com INSS e IRPF mensais.</p>
+      </div>
+      <div class="cards">
+        <div class="card metric">
+          <span class="label">Rendimento anual</span>
+          <strong id="pf-rendimento">R$ 0,00</strong>
+        </div>
+        <div class="card metric">
+          <span class="label">INSS anual</span>
+          <strong id="pf-inss">R$ 0,00</strong>
+        </div>
+        <div class="card metric">
+          <span class="label">IRPF anual</span>
+          <strong id="pf-irpf">R$ 0,00</strong>
+        </div>
+        <div class="card metric highlight">
+          <span class="label">Total de tributos</span>
+          <strong id="pf-total-tributos">R$ 0,00</strong>
+        </div>
+        <div class="card metric highlight">
+          <span class="label">Alíquota efetiva</span>
+          <strong id="pf-aliquota">0%</strong>
+        </div>
+        <div class="card metric">
+          <span class="label">Receita líquida</span>
+          <strong id="pf-receita">R$ 0,00</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="pj" role="tabpanel">
+      <div class="panel-header">
+        <h2>Pessoa Jurídica (Lucro Presumido)</h2>
+        <p class="muted">Tributos sobre faturamento + impacto do pró-labore.</p>
+      </div>
+      <div class="cards">
+        <div class="card metric">
+          <span class="label">IRPJ</span>
+          <strong id="pj-irpj">R$ 0,00</strong>
+        </div>
+        <div class="card metric">
+          <span class="label">CSLL</span>
+          <strong id="pj-csll">R$ 0,00</strong>
+        </div>
+        <div class="card metric">
+          <span class="label">PIS</span>
+          <strong id="pj-pis">R$ 0,00</strong>
+        </div>
+        <div class="card metric">
+          <span class="label">COFINS</span>
+          <strong id="pj-cofins">R$ 0,00</strong>
+        </div>
+        <div class="card metric">
+          <span class="label">ISS</span>
+          <strong id="pj-iss">R$ 0,00</strong>
+        </div>
+        <div class="card metric highlight">
+          <span class="label">Total de impostos</span>
+          <strong id="pj-total-impostos">R$ 0,00</strong>
+        </div>
+        <div class="card metric">
+          <span class="label">Lucro líquido</span>
+          <strong id="pj-lucro">R$ 0,00</strong>
+        </div>
+        <div class="card metric">
+          <span class="label">Dividendos estimados</span>
+          <strong id="pj-dividendos">R$ 0,00</strong>
+        </div>
+        <div class="card metric highlight">
+          <span class="label">Impacto PF (pró-labore)</span>
+          <strong id="pj-impacto-pf">R$ 0,00</strong>
+        </div>
+        <div class="card metric highlight">
+          <span class="label">Alíquota efetiva final</span>
+          <strong id="pj-aliquota-final">0%</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="comparativo" role="tabpanel">
+      <div class="panel-header">
+        <h2>Comparativo Final</h2>
+        <p class="muted">Visão executiva para decisão tributária.</p>
+      </div>
+      <div class="cards">
+        <div class="card metric highlight">
+          <span class="label">Economia tributária estimada</span>
+          <strong id="comp-economia">R$ 0,00</strong>
+        </div>
+        <div class="card metric">
+          <span class="label">Alíquota efetiva PF</span>
+          <strong id="comp-aliquota-pf">0%</strong>
+        </div>
+        <div class="card metric">
+          <span class="label">Alíquota efetiva PJ + PF</span>
+          <strong id="comp-aliquota-pj">0%</strong>
+        </div>
+        <div class="card metric">
+          <span class="label">Receita líquida PF</span>
+          <strong id="comp-receita-pf">R$ 0,00</strong>
+        </div>
+        <div class="card metric">
+          <span class="label">Lucro líquido PJ</span>
+          <strong id="comp-lucro-pj">R$ 0,00</strong>
+        </div>
+      </div>
+
+      <div class="card chart-card">
+        <h3>Comparação visual</h3>
+        <div class="bar-chart">
+          <div>
+            <span>PF</span>
+            <div class="bar" id="bar-pf"><span></span></div>
+          </div>
+          <div>
+            <span>PJ + PF</span>
+            <div class="bar" id="bar-pj"><span></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card chart-card">
+        <h3>Impostos por modelo</h3>
+        <div class="bar-chart">
+          <div>
+            <span>Total tributos PF</span>
+            <div class="bar" id="bar-tributos-pf"><span></span></div>
+          </div>
+          <div>
+            <span>Impostos PJ</span>
+            <div class="bar" id="bar-impostos-pj"><span></span></div>
+          </div>
+          <div>
+            <span>Impacto PF (pró-labore)</span>
+            <div class="bar" id="bar-impacto-pf"><span></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card chart-card">
+        <h3>Distribuição de tributos (PJ + PF)</h3>
+        <div class="pie-wrap">
+          <div class="pie" id="pie-pj"></div>
+          <div class="pie-legend">
+            <div><span class="dot dot-a"></span>Impostos PJ</div>
+            <div><span class="dot dot-b"></span>Impacto PF</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card chart-card">
+        <h3>Parecer do resultado</h3>
+        <p id="parecer-texto" class="muted"></p>
+      </div>
+
+    </section>
+
+    <section class="panel" id="historico" role="tabpanel">
+      <div class="panel-header">
+        <h2>Histórico de simulações</h2>
+        <p class="muted">Carregue simulações anteriores e reanalise os dados.</p>
+      </div>
+      <div class="card">
+        <div class="list-header">
+          <span>Empresa</span>
+          <span>Cliente</span>
+          <span>Data</span>
+          <span>Ações</span>
+        </div>
+        <div id="history-list" class="list-body"></div>
+      </div>
+    </section>
+
+    <section class="panel" id="analise" role="tabpanel">
+      <div class="panel-header">
+        <h2>Análise consolidada</h2>
+        <p class="muted">Tabela com os principais indicadores por simulação.</p>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table class="analysis-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Empresa</th>
+                <th>Cliente</th>
+                <th>Rendimento anual</th>
+                <th>Tributos PF</th>
+                <th>Impostos PJ</th>
+                <th>Impacto PF</th>
+                <th>Alíquota PF</th>
+                <th>Alíquota PJ+PF</th>
+                <th>Economia</th>
+              </tr>
+            </thead>
+            <tbody id="analysis-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="parametros" role="tabpanel">
+      <div class="panel-header">
+        <h2>Parâmetros tributários</h2>
+        <p class="muted">Edite as regras em JSON e salve.</p>
+      </div>
+      <div class="card">
+        <textarea id="config-json" class="config-area" rows="18"></textarea>
+        <div class="actions">
+          <button id="config-refresh" class="ghost">Recarregar</button>
+          <button id="config-save" class="primary">Salvar parâmetros</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="consolidacao" role="tabpanel">
+      <div class="panel-header">
+        <h2>Consolidação de dados</h2>
+        <p class="muted">Premissas, PF, PJ e Comparativo em uma única página.</p>
+      </div>
+      <div class="card">
+        <section class="consolidated-grid">
+          <div>
+            <h3>Premissas</h3>
+            <div class="print-grid">
+              <div><span>Rendimento mensal</span><strong id="cons-rendimento">R$ 0,00</strong></div>
+              <div><span>Pró-labore mensal</span><strong id="cons-prolabore">R$ 0,00</strong></div>
+              <div><span>ISS fixo anual</span><strong id="cons-iss">R$ 0,00</strong></div>
+              <div><span>Salário mínimo</span><strong id="cons-salario">R$ 0,00</strong></div>
+              <div><span>Despesas anuais</span><strong id="cons-despesas">R$ 0,00</strong></div>
+            </div>
+          </div>
+
+          <div>
+            <h3>Pessoa Física</h3>
+            <div class="print-grid">
+              <div><span>Rendimento anual</span><strong id="cons-pf-rendimento">R$ 0,00</strong></div>
+              <div><span>INSS</span><strong id="cons-pf-inss">R$ 0,00</strong></div>
+              <div><span>IRPF</span><strong id="cons-pf-irpf">R$ 0,00</strong></div>
+              <div><span>Total tributos</span><strong id="cons-pf-total">R$ 0,00</strong></div>
+              <div><span>Alíquota efetiva</span><strong id="cons-pf-aliquota">0%</strong></div>
+              <div><span>Receita líquida</span><strong id="cons-pf-receita">R$ 0,00</strong></div>
+            </div>
+          </div>
+
+          <div>
+            <h3>Pessoa Jurídica</h3>
+            <div class="print-grid">
+              <div><span>IRPJ (total)</span><strong id="cons-pj-irpj">R$ 0,00</strong></div>
+              <div><span>CSLL</span><strong id="cons-pj-csll">R$ 0,00</strong></div>
+              <div><span>PIS</span><strong id="cons-pj-pis">R$ 0,00</strong></div>
+              <div><span>COFINS</span><strong id="cons-pj-cofins">R$ 0,00</strong></div>
+              <div><span>ISS</span><strong id="cons-pj-iss">R$ 0,00</strong></div>
+              <div><span>Total impostos</span><strong id="cons-pj-total">R$ 0,00</strong></div>
+              <div><span>Lucro líquido</span><strong id="cons-pj-lucro">R$ 0,00</strong></div>
+              <div><span>Dividendos</span><strong id="cons-pj-dividendos">R$ 0,00</strong></div>
+              <div><span>Impacto PF</span><strong id="cons-pj-impacto">R$ 0,00</strong></div>
+              <div><span>Alíquota final</span><strong id="cons-pj-aliquota">0%</strong></div>
+            </div>
+          </div>
+
+          <div>
+            <h3>Comparativo Final</h3>
+            <div class="print-grid">
+              <div><span>Economia tributária</span><strong id="cons-comp-economia">R$ 0,00</strong></div>
+              <div><span>Alíquota PF</span><strong id="cons-comp-aliquota-pf">0%</strong></div>
+              <div><span>Alíquota PJ + PF</span><strong id="cons-comp-aliquota-pj">0%</strong></div>
+              <div><span>Receita líquida PF</span><strong id="cons-comp-receita-pf">R$ 0,00</strong></div>
+              <div><span>Lucro líquido PJ</span><strong id="cons-comp-lucro-pj">R$ 0,00</strong></div>
+            </div>
+            <h3>Parecer final</h3>
+            <p id="cons-parecer" class="muted"></p>
+          </div>
+        </section>
+
+        <div class="actions">
+          <button id="generate-pdf" class="primary">Gerar PDF</button>
+          <p class="muted">Gera o PDF a partir da consolidação.</p>
+        </div>
+      </div>
+    </section>
+      <footer class="footer">
+        <p>Simulador financeiro-tributário • Brasil Salomão </p>
+      </footer>
+    </main>
+  </div>
+
+  <section id="print-area" class="print-area">
+    <header class="print-header">
+      <div class="print-brand">
+        <img src="/img/logo.png" alt="Brasil Salomão" class="print-logo" />
+        <h1>Simulador PF x PJ</h1>
+      </div>
+      <div class="print-meta">
+        <div><strong>Cliente:</strong> <span id="print-cliente">-</span></div>
+        <div><strong>Empresa:</strong> <span id="print-empresa">-</span></div>
+        <div><strong>Data:</strong> <span id="print-data">-</span></div>
+      </div>
+    </header>
+
+    <div class="print-section">
+      <h2>Premissas</h2>
+      <div class="print-grid">
+        <div><span>Rendimento mensal</span><strong id="print-rendimento">R$ 0,00</strong></div>
+        <div><span>Pró-labore mensal</span><strong id="print-prolabore">R$ 0,00</strong></div>
+        <div><span>ISS fixo anual</span><strong id="print-iss">R$ 0,00</strong></div>
+        <div><span>Salário mínimo</span><strong id="print-salario">R$ 0,00</strong></div>
+        <div><span>Despesas anuais</span><strong id="print-despesas">R$ 0,00</strong></div>
+      </div>
+    </div>
+
+    <div class="print-section">
+      <h2>Pessoa Física</h2>
+      <div class="print-grid">
+        <div><span>Rendimento anual</span><strong id="print-pf-rendimento">R$ 0,00</strong></div>
+        <div><span>INSS</span><strong id="print-pf-inss">R$ 0,00</strong></div>
+        <div><span>IRPF</span><strong id="print-pf-irpf">R$ 0,00</strong></div>
+        <div><span>Total tributos</span><strong id="print-pf-total">R$ 0,00</strong></div>
+        <div><span>Alíquota efetiva</span><strong id="print-pf-aliquota">0%</strong></div>
+        <div><span>Receita líquida</span><strong id="print-pf-receita">R$ 0,00</strong></div>
+      </div>
+    </div>
+
+    <div class="print-section">
+      <h2>Pessoa Jurídica</h2>
+      <div class="print-grid">
+        <div><span>IRPJ (total)</span><strong id="print-pj-irpj">R$ 0,00</strong></div>
+        <div><span>CSLL</span><strong id="print-pj-csll">R$ 0,00</strong></div>
+        <div><span>PIS</span><strong id="print-pj-pis">R$ 0,00</strong></div>
+        <div><span>COFINS</span><strong id="print-pj-cofins">R$ 0,00</strong></div>
+        <div><span>ISS</span><strong id="print-pj-iss">R$ 0,00</strong></div>
+        <div><span>Total impostos</span><strong id="print-pj-total">R$ 0,00</strong></div>
+        <div><span>Lucro líquido</span><strong id="print-pj-lucro">R$ 0,00</strong></div>
+        <div><span>Dividendos</span><strong id="print-pj-dividendos">R$ 0,00</strong></div>
+        <div><span>Impacto PF</span><strong id="print-pj-impacto">R$ 0,00</strong></div>
+        <div><span>Alíquota final</span><strong id="print-pj-aliquota">0%</strong></div>
+      </div>
+    </div>
+
+    <div class="print-section">
+      <h2>Comparativo Final</h2>
+      <div class="print-grid">
+        <div><span>Economia tributária</span><strong id="print-comp-economia">R$ 0,00</strong></div>
+        <div><span>Alíquota PF</span><strong id="print-comp-aliquota-pf">0%</strong></div>
+        <div><span>Alíquota PJ + PF</span><strong id="print-comp-aliquota-pj">0%</strong></div>
+        <div><span>Receita líquida PF</span><strong id="print-comp-receita-pf">R$ 0,00</strong></div>
+        <div><span>Lucro líquido PJ</span><strong id="print-comp-lucro-pj">R$ 0,00</strong></div>
+      </div>
+    </div>
+
+    <div class="print-section">
+      <h2>Análises adicionais</h2>
+      <div class="print-grid">
+        <div><span>Tributos PF</span><strong id="print-analise-tributos-pf">R$ 0,00</strong></div>
+        <div><span>Impostos PJ</span><strong id="print-analise-impostos-pj">R$ 0,00</strong></div>
+        <div><span>Impacto PF</span><strong id="print-analise-impacto-pf">R$ 0,00</strong></div>
+      </div>
+    </div>
+
+    <div class="print-section">
+      <h2>Parecer final</h2>
+      <p id="print-parecer" class="muted"></p>
+    </div>
+  </section>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <div id="login-overlay" class="login-overlay">
+    <div class="login-card">
+      <img src="/img/logo.png" alt="Brasil Salomão" class="login-logo" />
+      <h2>Entrar</h2>
+      <p class="muted">Acesso administrativo necessário para continuar.</p>
+      <label for="login-user">Usuário</label>
+      <input id="login-user" type="text" />
+      <label for="login-pass">Senha</label>
+      <input id="login-pass" type="password" />
+      <button id="login-btn" class="primary">Entrar</button>
+      <small id="login-error" class="error"></small>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
