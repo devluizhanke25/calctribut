@@ -3,10 +3,12 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from urllib.parse import quote
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+import requests
 from flask import Flask, jsonify, render_template, request
 
 from backend.calculations import calculate_all
@@ -53,9 +55,145 @@ def _make_token(login: str, password: str) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
+def _kv_config() -> Optional[Dict[str, str]]:
+    url = os.getenv("KV_REST_API_URL") or os.getenv("UPSTASH_REDIS_REST_URL")
+    token = os.getenv("KV_REST_API_TOKEN") or os.getenv("UPSTASH_REDIS_REST_TOKEN")
+    if not url or not token:
+        return None
+    return {"url": url.rstrip("/"), "token": token}
+
+
+def _kv_request(command: str, *args: str, data: Optional[str] = None) -> Dict[str, Any]:
+    config = _kv_config()
+    if not config:
+        raise RuntimeError("KV nao configurado")
+    path = "/".join([command.lower(), *[quote(str(arg), safe="") for arg in args]])
+    url = f"{config['url']}/{path}"
+    headers = {"Authorization": f"Bearer {config['token']}"}
+    if data is None:
+        response = requests.get(url, headers=headers, timeout=10)
+    else:
+        response = requests.post(url, headers=headers, data=data.encode("utf-8"), timeout=10)
+    response.raise_for_status()
+    payload = response.json()
+    if "error" in payload:
+        raise RuntimeError(payload["error"])
+    return payload
+
+
+def _kv_set(key: str, value: str) -> None:
+    _kv_request("set", key, data=value)
+
+
+def _kv_get(key: str) -> Optional[str]:
+    payload = _kv_request("get", key)
+    return payload.get("result")
+
+
+def _kv_del(key: str) -> None:
+    _kv_request("del", key)
+
+
+def _kv_zadd(key: str, score: float, member: str) -> None:
+    _kv_request("zadd", key, str(score), member)
+
+
+def _kv_zrem(key: str, member: str) -> None:
+    _kv_request("zrem", key, member)
+
+
+def _kv_zrange(key: str, start: int, stop: int, rev: bool = False) -> list[str]:
+    args = [key, str(start), str(stop)]
+    if rev:
+        args.append("REV")
+    payload = _kv_request("zrange", *args)
+    return payload.get("result") or []
+
+
+def _kv_mget(keys: list[str]) -> list[Optional[str]]:
+    if not keys:
+        return []
+    payload = _kv_request("mget", *keys)
+    return payload.get("result") or []
+
+
+def _storage_use_kv() -> bool:
+    return _kv_config() is not None
+
+
 def _slugify(value: str) -> str:
     safe = "".join(ch if ch.isalnum() else "_" for ch in value.strip())
     return "_".join(filter(None, safe.split("_"))).lower() or "empresa"
+
+
+def _load_records() -> list[dict[str, Any]]:
+    if _storage_use_kv():
+        ids = _kv_zrange("sim:index", 0, -1, rev=True)
+        keys = [f"sim:{sim_id}" for sim_id in ids]
+        raw_items = _kv_mget(keys)
+        records: list[dict[str, Any]] = []
+        for raw in raw_items:
+            if not raw:
+                continue
+            try:
+                records.append(json.loads(raw))
+            except json.JSONDecodeError:
+                continue
+        return records
+
+    records: list[dict[str, Any]] = []
+    for path in DATA_DIR.rglob("*.json"):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            continue
+        records.append(payload)
+    return records
+
+
+def _save_record(record: dict[str, Any]) -> None:
+    if _storage_use_kv():
+        sim_id = record["id"]
+        key = f"sim:{sim_id}"
+        _kv_set(key, json.dumps(record, ensure_ascii=False, indent=2))
+        created_at = record.get("created_at") or datetime.now().isoformat()
+        score = datetime.fromisoformat(created_at).timestamp()
+        _kv_zadd("sim:index", score, sim_id)
+        return
+
+    sim_id = record["id"]
+    path = DATA_DIR / f"{sim_id}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _get_record(sim_id: str) -> Optional[dict[str, Any]]:
+    if _storage_use_kv():
+        key = f"sim:{sim_id}"
+        raw = _kv_get(key)
+        if not raw:
+            return None
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            return None
+
+    path = DATA_DIR / f"{sim_id}.json"
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _delete_record(sim_id: str) -> None:
+    if _storage_use_kv():
+        key = f"sim:{sim_id}"
+        _kv_del(key)
+        _kv_zrem("sim:index", sim_id)
+        return
+
+    path = DATA_DIR / f"{sim_id}.json"
+    if path.exists():
+        path.unlink()
 
 
 def _require_auth() -> Optional[str]:
@@ -205,11 +343,10 @@ def save_simulation() -> Any:
     )
 
     now = datetime.now()
-    empresa_dir = DATA_DIR / _slugify(nome_empresa)
-    empresa_dir.mkdir(parents=True, exist_ok=True)
     file_id = now.strftime("%Y-%m-%d_%H%M%S")
+    sim_id = f"{_slugify(nome_empresa)}/{file_id}"
     record = {
-        "id": f"{_slugify(nome_empresa)}/{file_id}",
+        "id": sim_id,
         "created_at": now.isoformat(),
         "nome_cliente": (parsed.get("nome_cliente") or "").strip(),
         "nome_empresa": nome_empresa,
@@ -229,10 +366,7 @@ def save_simulation() -> Any:
         },
         "output": result,
     }
-    (empresa_dir / f"{file_id}.json").write_text(
-        json.dumps(record, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
+    _save_record(record)
     return jsonify({"id": record["id"]})
 
 
@@ -241,12 +375,8 @@ def list_simulations() -> Any:
     if not _require_auth():
         return _json_error("Nao autorizado", 401)
 
-    records: list[dict[str, Any]] = []
-    for path in DATA_DIR.rglob("*.json"):
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            continue
+    records = []
+    for payload in _load_records():
         records.append(
             {
                 "id": payload.get("id"),
@@ -265,10 +395,10 @@ def load_simulation(sim_id: str) -> Any:
         return _json_error("Nao autorizado", 401)
 
     safe_id = sim_id.replace("..", "").strip("/")
-    path = DATA_DIR / f"{safe_id}.json"
-    if not path.exists():
+    payload = _get_record(safe_id)
+    if not payload:
         return _json_error("Simulacao nao encontrada", 404)
-    return jsonify(json.loads(path.read_text(encoding="utf-8")))
+    return jsonify(payload)
 
 
 @app.delete("/simulations/<path:sim_id>")
@@ -277,10 +407,10 @@ def delete_simulation(sim_id: str) -> Any:
         return _json_error("Nao autorizado", 401)
 
     safe_id = sim_id.replace("..", "").strip("/")
-    path = DATA_DIR / f"{safe_id}.json"
-    if not path.exists():
+    payload = _get_record(safe_id)
+    if not payload:
         return _json_error("Simulacao nao encontrada", 404)
-    path.unlink()
+    _delete_record(safe_id)
     return jsonify({"status": "deleted"})
 
 
@@ -290,11 +420,7 @@ def analysis() -> Any:
         return _json_error("Nao autorizado", 401)
 
     rows: list[dict[str, Any]] = []
-    for path in DATA_DIR.rglob("*.json"):
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            continue
+    for payload in _load_records():
         output = payload.get("output", {})
         pf = output.get("pf", {})
         pj = output.get("pj", {})
