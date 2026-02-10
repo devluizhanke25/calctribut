@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
-import secrets
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -27,8 +27,6 @@ else:
     DATA_DIR = BASE_DIR / "data" / "simulacoes"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-SESSIONS: Dict[str, str] = {}
-
 
 def _get_credentials() -> Dict[str, str]:
     env = {
@@ -50,6 +48,11 @@ def _get_credentials() -> Dict[str, str]:
     }
 
 
+def _make_token(login: str, password: str) -> str:
+    raw = f"{login}:{password}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
 def _slugify(value: str) -> str:
     safe = "".join(ch if ch.isalnum() else "_" for ch in value.strip())
     return "_".join(filter(None, safe.split("_"))).lower() or "empresa"
@@ -57,9 +60,13 @@ def _slugify(value: str) -> str:
 
 def _require_auth() -> Optional[str]:
     token = request.headers.get("X-Auth-Token")
-    if not token or token not in SESSIONS:
+    if not token:
         return None
-    return SESSIONS[token]
+    credentials = _get_credentials()
+    expected = _make_token(credentials["login"], credentials["password"])
+    if token != expected:
+        return None
+    return credentials["login"]
 
 
 def _json_error(message: str, status_code: int) -> tuple[Any, int]:
@@ -136,8 +143,7 @@ def login() -> Any:
     credentials = _get_credentials()
     if payload.get("login") != credentials["login"] or payload.get("senha") != credentials["password"]:
         return _json_error("Credenciais invalidas", 401)
-    token = secrets.token_urlsafe(24)
-    SESSIONS[token] = credentials["login"]
+    token = _make_token(credentials["login"], credentials["password"])
     return jsonify({"token": token})
 
 
