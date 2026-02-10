@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import secrets
 from datetime import datetime
 from pathlib import Path
@@ -14,7 +15,11 @@ from backend.constants import DEFAULT_MIN_WAGE, get_rules, save_rules
 app = Flask(__name__, static_folder="public", static_url_path="")
 
 BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "data" / "simulacoes"
+# Vercel filesystem is read-only except for /tmp.
+if os.getenv("VERCEL") or os.getenv("VERCEL_ENV"):
+    DATA_DIR = Path("/tmp") / "brmsalcalc" / "simulacoes"
+else:
+    DATA_DIR = BASE_DIR / "data" / "simulacoes"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 SESSIONS: Dict[str, str] = {}

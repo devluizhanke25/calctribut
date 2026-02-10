@@ -1,0 +1,61 @@
+{
+  "id": "clinilab/2026-02-02_135150",
+  "created_at": "2026-02-02T13:51:50.882716",
+  "nome_cliente": "Dr Augusto Silva",
+  "nome_empresa": "Clinilab",
+  "input": {
+    "nome_cliente": "Dr Augusto Silva",
+    "nome_empresa": "Clinilab",
+    "rendimento_mensal": 120000.0,
+    "despesas_anuais": {
+      "secretaria": 36000.0,
+      "aluguel_condominio": 30000.0,
+      "contador": 12000.0,
+      "outras_despesas": 0.0
+    },
+    "pro_labore": 25000.0,
+    "iss_fixo": 2500.0,
+    "salario_minimo": 1621.0
+  },
+  "output": {
+    "pf": {
+      "rendimento_anual": 1440000.0,
+      "inss": 7524.2,
+      "irpf": 371793.34500000003,
+      "iss": 2500.0,
+      "total_tributos": 381817.54500000004,
+      "aliquota_efetiva": 0.2651510729166667,
+      "receita_liquida": 970158.255,
+      "renda_liquida": 1351975.8,
+      "total_despesas": 88024.2
+    },
+    "pj": {
+      "base_presumida": 460800.0,
+      "irpj": 69120.0,
+      "irpj_adicional": 22080.0,
+      "irpj_total": 91200.0,
+      "csll": 41472.0,
+      "irpj_csll": 132672.0,
+      "pis": 9360.0,
+      "cofins": 43200.0,
+      "cbs": 0.0,
+      "ibs": 0.0,
+      "iss": 2500.0,
+      "inss_folha": 7200.04,
+      "total_impostos": 194932.04,
+      "lucro_liquido": 489067.95999999996,
+      "dividendos": 489067.95999999996,
+      "irpf_m_percent": -1.8488673333333345,
+      "impacto_pf": -9042.217750239737,
+      "aliquota_efetiva_final": 0.12909015434011128,
+      "pro_labore_liquido": 267000.0
+    },
+    "comparativo": {
+      "economia_tributaria": 195927.72275023977,
+      "aliquota_pf": 0.2651510729166667,
+      "aliquota_pj_final": 0.12909015434011128,
+      "receita_liquida_pf": 970158.255,
+      "lucro_liquido_pj": 489067.95999999996
+    }
+  }
+}
