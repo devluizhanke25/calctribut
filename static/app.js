@@ -1,4 +1,4 @@
-const API_BASE = "";
+Ôªøconst API_BASE = "";
 const API_URL = `${API_BASE}/calculate`;
 
 const defaults = {
@@ -129,7 +129,7 @@ async function authFetch(url, options = {}) {
   const token = getToken();
   if (!token) {
     loginOverlay.classList.remove("hidden");
-    throw new Error("Sem autenticaÁ„o");
+    throw new Error("Sem autentica√ß√£o");
   }
   const headers = options.headers || {};
   const response = await fetch(url, {
@@ -142,7 +142,7 @@ async function authFetch(url, options = {}) {
   if (response.status === 401) {
     localStorage.removeItem("auth_token");
     loginOverlay.classList.remove("hidden");
-    throw new Error("N„o autorizado");
+    throw new Error("N√£o autorizado");
   }
   return response;
 }
@@ -221,24 +221,24 @@ function updateExtraCharts(data) {
 function getParecerText(data) {
   const economia = data.comparativo.economia_tributaria;
   if (economia > 0) {
-    return "Com base nas premissas, a estrutura PJ apresenta menor carga tribut·ria total e maior eficiÍncia fiscal, indicando vantagem econÙmica em relaÁ„o ‡ PF.";
+    return "Com base nas premissas, a estrutura PJ apresenta menor carga tribut√°ria total e maior efici√™ncia fiscal, indicando vantagem econ√¥mica em rela√ß√£o √† PF.";
   }
   if (economia < 0) {
-    return "Com base nas premissas, a estrutura PF apresenta melhor resultado tribut·rio total do que a PJ. Recomenda-se manter o modelo PF ou revisar as premissas.";
+    return "Com base nas premissas, a estrutura PF apresenta melhor resultado tribut√°rio total do que a PJ. Recomenda-se manter o modelo PF ou revisar as premissas.";
   }
-  return "Com base nas premissas, os resultados entre PF e PJ s„o equivalentes. Avalie outros fatores operacionais antes de decidir.";
+  return "Com base nas premissas, os resultados entre PF e PJ s√£o equivalentes. Avalie outros fatores operacionais antes de decidir.";
 }
 
 async function calculate() {
   if (!getToken()) {
     loginOverlay.classList.remove("hidden");
-    statusError.textContent = "FaÁa login para calcular.";
+    statusError.textContent = "Fa√ßa login para calcular.";
     statusError.classList.remove("hidden");
     return;
   }
   statusLoading.classList.remove("hidden");
   statusError.classList.add("hidden");
-  statusIndicator.textContent = "Atualizando simulaÁ„o";
+  statusIndicator.textContent = "Atualizando simula√ß√£o";
 
   const payload = {
     nome_cliente: state.nome_cliente,
@@ -263,7 +263,7 @@ async function calculate() {
     });
 
     if (!response.ok) {
-      throw new Error("Falha no c·lculo");
+      throw new Error("Falha no c√°lculo");
     }
 
     const data = await response.json();
@@ -285,16 +285,16 @@ async function calculate() {
     updateConsolidated(data);
     return data;
   } catch (error) {
-    if (error.message === "N„o autorizado" || error.message === "Sem autenticaÁ„o") {
-      statusError.textContent = "Sess„o expirada. FaÁa login novamente.";
+    if (error.message === "N√£o autorizado" || error.message === "Sem autentica√ß√£o") {
+      statusError.textContent = "Sess√£o expirada. Fa√ßa login novamente.";
     } else {
-      statusError.textContent = "N„o foi possÌvel calcular. Verifique o backend.";
+      statusError.textContent = "N√£o foi poss√≠vel calcular. Verifique o backend.";
     }
     statusError.classList.remove("hidden");
     return null;
   } finally {
     statusLoading.classList.add("hidden");
-    statusIndicator.textContent = "SimulaÁ„o atualizada";
+    statusIndicator.textContent = "Simula√ß√£o atualizada";
   }
 }
 
@@ -311,7 +311,7 @@ function handleInput(event) {
   const rawValue = parseInput(event.target.value);
 
   if (rawValue < 0) {
-    setError(id, "Valor n„o pode ser negativo");
+    setError(id, "Valor n√£o pode ser negativo");
   } else {
     setError(id, "");
   }
@@ -446,7 +446,7 @@ async function generatePdf() {
   try {
     if (!getToken()) {
       loginOverlay.classList.remove("hidden");
-      statusError.textContent = "FaÁa login para gerar o PDF.";
+      statusError.textContent = "Fa√ßa login para gerar o PDF.";
       statusError.classList.remove("hidden");
       return;
     }
@@ -461,14 +461,14 @@ async function generatePdf() {
       data = await calculate();
     }
     if (!data) {
-      statusError.textContent = "Preencha as premissas e aguarde o c·lculo antes de gerar o PDF.";
+      statusError.textContent = "Preencha as premissas e aguarde o c√°lculo antes de gerar o PDF.";
       statusError.classList.remove("hidden");
-      throw new Error("Falha no c·lculo");
+      throw new Error("Falha no c√°lculo");
     }
     hydratePrintArea(data);
     const source = document.getElementById("print-area");
     if (!source) {
-      throw new Error("¡rea de impress„o n„o encontrada");
+      throw new Error("√Årea de impress√£o n√£o encontrada");
     }
     document.body.classList.add("pdf-export");
     clone = source.cloneNode(true);
@@ -487,7 +487,7 @@ async function generatePdf() {
     wrapper.appendChild(clone);
     document.body.appendChild(wrapper);
 
-    // Aguarda renderizaÁ„o e carregamento de imagens
+    // Aguarda renderiza√ß√£o e carregamento de imagens
     await new Promise((resolve) => requestAnimationFrame(resolve));
     await waitForImages(clone);
     await new Promise((resolve) => setTimeout(resolve, debugPdf ? 1200 : 100));
@@ -510,8 +510,8 @@ async function generatePdf() {
     await html2pdf().set(options).from(clone).save();
     statusIndicator.textContent = "PDF gerado";
   } catch (error) {
-    if (error.message === "N„o autorizado" || error.message === "Sem autenticaÁ„o") {
-      statusError.textContent = "Sess„o expirada. FaÁa login novamente.";
+    if (error.message === "N√£o autorizado" || error.message === "Sem autentica√ß√£o") {
+      statusError.textContent = "Sess√£o expirada. Fa√ßa login novamente.";
     } else {
       statusError.textContent = "Nao foi possivel gerar o PDF. Verifique o backend.";
     }
@@ -580,7 +580,7 @@ document.getElementById("save-session").addEventListener("click", async () => {
     }
     await loadHistory();
     await loadAnalysis();
-    statusIndicator.textContent = "SimulaÁ„o salva";
+    statusIndicator.textContent = "Simula√ß√£o salva";
   } catch (error) {
     statusError.textContent = "Nao foi possivel salvar a simulacao.";
     statusError.classList.remove("hidden");
@@ -597,7 +597,7 @@ async function loadHistory() {
     if (!response.ok) return;
     const data = await response.json();
     if (!data.length) {
-      container.innerHTML = "<p class=\"muted\">Nenhuma simulaÁ„o salva.</p>";
+      container.innerHTML = "<p class=\"muted\">Nenhuma simula√ß√£o salva.</p>";
       return;
     }
     data.forEach((item) => {
@@ -625,14 +625,14 @@ async function loadHistory() {
       container.appendChild(row);
     });
   } catch (error) {
-    statusError.textContent = "FaÁa login para acessar o histÛrico.";
+    statusError.textContent = "Fa√ßa login para acessar o hist√≥rico.";
     statusError.classList.remove("hidden");
   }
 }
 
 async function loadSimulation(id) {
   if (!getToken()) return;
-  const response = await authFetch(`${API_BASE}/simulations/${id}`);
+  const response = await authFetch(`/simulations/`);
   if (!response.ok) return;
   const payload = await response.json();
   const input = payload.input || {};
@@ -671,7 +671,7 @@ async function loadSimulation(id) {
 
 async function deleteSimulation(id) {
   if (!getToken()) return;
-  const response = await authFetch(`${API_BASE}/simulations/${id}`, { method: "DELETE" });
+  const response = await authFetch(`/simulations/`, { method: "DELETE" });
   if (!response.ok) return;
   loadHistory();
   loadAnalysis();
@@ -703,7 +703,7 @@ async function loadAnalysis() {
       body.appendChild(tr);
     });
   } catch (error) {
-    statusError.textContent = "FaÁa login para acessar a an·lise.";
+    statusError.textContent = "Fa√ßa login para acessar a an√°lise.";
     statusError.classList.remove("hidden");
   }
 }
@@ -784,7 +784,7 @@ if (logoutButton) {
     localStorage.removeItem("auth_token");
     setDefaults();
     loginOverlay.classList.remove("hidden");
-    statusIndicator.textContent = "FaÁa login para continuar";
+    statusIndicator.textContent = "Fa√ßa login para continuar";
     statusError.classList.add("hidden");
   });
 }
@@ -797,7 +797,7 @@ async function loadConfig() {
     const data = await response.json();
     configArea.value = JSON.stringify(data, null, 2);
   } catch (error) {
-    statusError.textContent = "FaÁa login para acessar os par‚metros.";
+    statusError.textContent = "Fa√ßa login para acessar os par√¢metros.";
     statusError.classList.remove("hidden");
   }
 }
@@ -814,9 +814,9 @@ async function saveConfig() {
     if (!response.ok) {
       throw new Error("Falha ao salvar");
     }
-    statusIndicator.textContent = "Par‚metros salvos";
+    statusIndicator.textContent = "Par√¢metros salvos";
   } catch (error) {
-    statusError.textContent = "JSON inv·lido ou erro ao salvar par‚metros.";
+    statusError.textContent = "JSON inv√°lido ou erro ao salvar par√¢metros.";
     statusError.classList.remove("hidden");
   }
 }
