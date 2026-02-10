@@ -5,7 +5,13 @@
       "src": "app.py",
       "use": "@vercel/python",
       "config": {
-        "runtime": "python3.11"
+        "runtime": "python3.11",
+        "includeFiles": [
+          "templates/**",
+          "public/**",
+          "backend/**",
+          "data/**"
+        ]
       }
     }
   ],

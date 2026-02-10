@@ -12,7 +12,7 @@ from flask import Flask, jsonify, render_template, request
 from backend.calculations import calculate_all
 from backend.constants import DEFAULT_MIN_WAGE, get_rules, save_rules
 
-app = Flask(__name__, static_folder="public", static_url_path="")
+app = Flask(__name__, static_folder="public", static_url_path="/static")
 
 BASE_DIR = Path(__file__).resolve().parent
 # Vercel filesystem is read-only except for /tmp.
