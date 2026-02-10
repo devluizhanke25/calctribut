@@ -16,7 +16,7 @@ BASE_DIR = Path(__file__).resolve().parent
 # Use absolute paths to avoid cwd issues on Vercel.
 app = Flask(
     __name__,
-    static_folder=str(BASE_DIR / "public"),
+    static_folder=str(BASE_DIR / "static"),
     static_url_path="/static",
     template_folder=str(BASE_DIR / "templates"),
 )

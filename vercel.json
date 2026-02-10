@@ -8,6 +8,7 @@
         "runtime": "python3.11",
         "includeFiles": [
           "templates/**",
+          "static/**",
           "public/**",
           "backend/**",
           "data/**"
