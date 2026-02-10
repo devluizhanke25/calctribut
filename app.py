@@ -121,6 +121,13 @@ def _storage_use_kv() -> bool:
     return _kv_config() is not None
 
 
+def _require_kv_if_vercel() -> Optional[tuple[Any, int]]:
+    if os.getenv("VERCEL") or os.getenv("VERCEL_ENV"):
+        if not _kv_config():
+            return _json_error("KV nao configurado", 500)
+    return None
+
+
 def _slugify(value: str) -> str:
     safe = "".join(ch if ch.isalnum() else "_" for ch in value.strip())
     return "_".join(filter(None, safe.split("_"))).lower() or "empresa"
@@ -321,6 +328,9 @@ def calculate() -> Any:
 def save_simulation() -> Any:
     if not _require_auth():
         return _json_error("Nao autorizado", 401)
+    kv_guard = _require_kv_if_vercel()
+    if kv_guard:
+        return kv_guard
 
     payload = _get_payload()
     if payload is None:
@@ -374,6 +384,9 @@ def save_simulation() -> Any:
 def list_simulations() -> Any:
     if not _require_auth():
         return _json_error("Nao autorizado", 401)
+    kv_guard = _require_kv_if_vercel()
+    if kv_guard:
+        return kv_guard
 
     records = []
     for payload in _load_records():
@@ -393,6 +406,9 @@ def list_simulations() -> Any:
 def load_simulation(sim_id: str) -> Any:
     if not _require_auth():
         return _json_error("Nao autorizado", 401)
+    kv_guard = _require_kv_if_vercel()
+    if kv_guard:
+        return kv_guard
 
     safe_id = sim_id.replace("..", "").strip("/")
     payload = _get_record(safe_id)
@@ -405,6 +421,9 @@ def load_simulation(sim_id: str) -> Any:
 def delete_simulation(sim_id: str) -> Any:
     if not _require_auth():
         return _json_error("Nao autorizado", 401)
+    kv_guard = _require_kv_if_vercel()
+    if kv_guard:
+        return kv_guard
 
     safe_id = sim_id.replace("..", "").strip("/")
     payload = _get_record(safe_id)
@@ -418,6 +437,9 @@ def delete_simulation(sim_id: str) -> Any:
 def analysis() -> Any:
     if not _require_auth():
         return _json_error("Nao autorizado", 401)
+    kv_guard = _require_kv_if_vercel()
+    if kv_guard:
+        return kv_guard
 
     rows: list[dict[str, Any]] = []
     for payload in _load_records():
@@ -460,3 +482,31 @@ def update_config() -> Any:
         return _json_error("Formato invalido", 400)
     save_rules(payload)
     return jsonify({"status": "updated"})
+
+
+@app.get("/simulations/")
+def list_simulations_slash() -> Any:
+    return list_simulations()
+
+
+@app.get("/analysis/")
+def analysis_slash() -> Any:
+    return analysis()
+
+
+@app.get("/config/")
+def config_slash() -> Any:
+    return get_config()
+
+
+@app.get("/kv-health")
+def kv_health() -> Any:
+    config = _kv_config()
+    if not config:
+        return _json_error("KV nao configurado", 500)
+    try:
+        _kv_set("kv:health", "ok")
+        value = _kv_get("kv:health")
+        return jsonify({"status": "ok", "value": value})
+    except Exception as exc:
+        return _json_error(f"KV erro: {exc}", 500)
