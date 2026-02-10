@@ -30,24 +30,23 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 SESSIONS: Dict[str, str] = {}
 
 
-def _load_env() -> Dict[str, str]:
-    env_path = BASE_DIR / ".env"
-    if not env_path.exists():
-        return {}
-    data: Dict[str, str] = {}
-    for line in env_path.read_text(encoding="utf-8").splitlines():
-        if not line or line.strip().startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        data[key.strip()] = value.strip()
-    return data
-
-
 def _get_credentials() -> Dict[str, str]:
-    env = _load_env()
+    env = {
+        "ADMIN_LOGIN": os.getenv("ADMIN_LOGIN"),
+        "ADMIN_PASSWORD": os.getenv("ADMIN_PASSWORD"),
+    }
+    if not env["ADMIN_LOGIN"] or not env["ADMIN_PASSWORD"]:
+        env_path = BASE_DIR / ".env"
+        if env_path.exists():
+            for line in env_path.read_text(encoding="utf-8").splitlines():
+                if not line or line.strip().startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                if key.strip() in ("ADMIN_LOGIN", "ADMIN_PASSWORD"):
+                    env[key.strip()] = value.strip()
     return {
-        "login": env.get("ADMIN_LOGIN", "admin"),
-        "password": env.get("ADMIN_PASSWORD", "admin123"),
+        "login": env.get("ADMIN_LOGIN") or "admin",
+        "password": env.get("ADMIN_PASSWORD") or "admin123",
     }
 
 
