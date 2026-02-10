@@ -12,9 +12,14 @@ from flask import Flask, jsonify, render_template, request
 from backend.calculations import calculate_all
 from backend.constants import DEFAULT_MIN_WAGE, get_rules, save_rules
 
-app = Flask(__name__, static_folder="public", static_url_path="/static")
-
 BASE_DIR = Path(__file__).resolve().parent
+# Use absolute paths to avoid cwd issues on Vercel.
+app = Flask(
+    __name__,
+    static_folder=str(BASE_DIR / "public"),
+    static_url_path="/static",
+    template_folder=str(BASE_DIR / "templates"),
+)
 # Vercel filesystem is read-only except for /tmp.
 if os.getenv("VERCEL") or os.getenv("VERCEL_ENV"):
     DATA_DIR = Path("/tmp") / "brmsalcalc" / "simulacoes"
