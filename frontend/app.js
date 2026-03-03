@@ -39,6 +39,9 @@ const logoutButton = document.getElementById("logout-btn");
 const configArea = document.getElementById("config-json");
 const configRefresh = document.getElementById("config-refresh");
 const configSave = document.getElementById("config-save");
+const presumedProfitRateInput = document.getElementById("presumed_profit_rate");
+let currentConfig = null;
+let configSaveTimer = null;
 const consolidatedMap = {
   "cons-rendimento": () => formatCurrency(state.rendimento_mensal),
   "cons-prolabore": () => formatCurrency(state.pro_labore),
@@ -84,21 +87,37 @@ const fieldMap = {
 
 const outputMap = {
   "pf-rendimento": (data) => data.pf.rendimento_anual,
+  "cmp-pf-rendimento": (data) => data.pf.rendimento_anual,
   "pf-inss": (data) => data.pf.inss,
+  "cmp-pf-inss": (data) => data.pf.inss,
   "pf-irpf": (data) => data.pf.irpf,
+  "cmp-pf-irpf": (data) => data.pf.irpf,
   "pf-total-tributos": (data) => data.pf.total_tributos,
+  "cmp-pf-total-tributos": (data) => data.pf.total_tributos,
   "pf-aliquota": (data) => data.pf.aliquota_efetiva,
+  "cmp-pf-aliquota": (data) => data.pf.aliquota_efetiva,
   "pf-receita": (data) => data.pf.receita_liquida,
+  "cmp-pf-receita": (data) => data.pf.receita_liquida,
   "pj-irpj": (data) => data.pj.irpj_total,
+  "cmp-pj-irpj": (data) => data.pj.irpj_total,
   "pj-csll": (data) => data.pj.csll,
+  "cmp-pj-csll": (data) => data.pj.csll,
   "pj-pis": (data) => data.pj.pis,
+  "cmp-pj-pis": (data) => data.pj.pis,
   "pj-cofins": (data) => data.pj.cofins,
+  "cmp-pj-cofins": (data) => data.pj.cofins,
   "pj-iss": (data) => data.pj.iss,
+  "cmp-pj-iss": (data) => data.pj.iss,
   "pj-total-impostos": (data) => data.pj.total_impostos,
+  "cmp-pj-total-impostos": (data) => data.pj.total_impostos,
   "pj-lucro": (data) => data.pj.lucro_liquido,
+  "cmp-pj-lucro": (data) => data.pj.lucro_liquido,
   "pj-dividendos": (data) => data.pj.dividendos,
+  "cmp-pj-dividendos": (data) => data.pj.dividendos,
   "pj-impacto-pf": (data) => data.pj.impacto_pf,
+  "cmp-pj-impacto-pf": (data) => data.pj.impacto_pf,
   "pj-aliquota-final": (data) => data.pj.aliquota_efetiva_final,
+  "cmp-pj-aliquota-final": (data) => data.pj.aliquota_efetiva_final,
   "comp-economia": (data) => data.comparativo.economia_tributaria,
   "comp-aliquota-pf": (data) => data.comparativo.aliquota_pf,
   "comp-aliquota-pj": (data) => data.comparativo.aliquota_pj_final,
@@ -185,6 +204,7 @@ function updateResumo() {
 function updateCharts(pfRate, pjRate) {
   const pfBar = document.getElementById("bar-pf");
   const pjBar = document.getElementById("bar-pj");
+  if (!pfBar || !pjBar) return;
   const maxRate = Math.max(pfRate, pjRate, 0.01);
   pfBar.style.setProperty("--value", `${(pfRate / maxRate) * 100}%`);
   pjBar.style.setProperty("--value", `${(pjRate / maxRate) * 100}%`);
@@ -212,10 +232,6 @@ function updateExtraCharts(data) {
     pie.style.background = `conic-gradient(#111111 0deg ${pctPj}deg, #d0d0d0 ${pctPj}deg 360deg)`;
   }
 
-  const parecer = document.getElementById("parecer-texto");
-  if (parecer) {
-    parecer.textContent = getParecerText(data);
-  }
 }
 
 function getParecerText(data) {
@@ -333,6 +349,9 @@ function setDefaults() {
     }
     setInputValue(key, value);
   });
+  if (presumedProfitRateInput) {
+    presumedProfitRateInput.value = "32";
+  }
   updateResumo();
 }
 
@@ -375,7 +394,8 @@ if (companyInput) {
   });
 }
 
-document.getElementById("reset").addEventListener("click", () => {
+document.getElementById("reset").addEventListener("click", (event) => {
+  event.preventDefault();
   setDefaults();
   if (getToken()) {
     scheduleCalculation();
@@ -388,42 +408,22 @@ function hydratePrintArea(data) {
   document.getElementById("print-empresa").textContent = state.nome_empresa || "-";
   document.getElementById("print-data").textContent = today.toLocaleDateString("pt-BR");
 
-  document.getElementById("print-rendimento").textContent = formatCurrency(state.rendimento_mensal);
-  document.getElementById("print-prolabore").textContent = formatCurrency(state.pro_labore);
-  document.getElementById("print-iss").textContent = formatCurrency(state.iss_fixo);
-  document.getElementById("print-salario").textContent = formatCurrency(state.salario_minimo);
-  document.getElementById("print-despesas").textContent = formatCurrency(
-    state.secretaria + state.aluguel_condominio + state.contador + state.outras_despesas
-  );
-
-  document.getElementById("print-pf-rendimento").textContent = formatCurrency(data.pf.rendimento_anual);
-  document.getElementById("print-pf-inss").textContent = formatCurrency(data.pf.inss);
-  document.getElementById("print-pf-irpf").textContent = formatCurrency(data.pf.irpf);
-  document.getElementById("print-pf-total").textContent = formatCurrency(data.pf.total_tributos);
-  document.getElementById("print-pf-aliquota").textContent = formatPercent(data.pf.aliquota_efetiva);
-  document.getElementById("print-pf-receita").textContent = formatCurrency(data.pf.receita_liquida);
-
-  document.getElementById("print-pj-irpj").textContent = formatCurrency(data.pj.irpj_total);
-  document.getElementById("print-pj-csll").textContent = formatCurrency(data.pj.csll);
-  document.getElementById("print-pj-pis").textContent = formatCurrency(data.pj.pis);
-  document.getElementById("print-pj-cofins").textContent = formatCurrency(data.pj.cofins);
-  document.getElementById("print-pj-iss").textContent = formatCurrency(data.pj.iss);
-  document.getElementById("print-pj-total").textContent = formatCurrency(data.pj.total_impostos);
-  document.getElementById("print-pj-lucro").textContent = formatCurrency(data.pj.lucro_liquido);
-  document.getElementById("print-pj-dividendos").textContent = formatCurrency(data.pj.dividendos);
-  document.getElementById("print-pj-impacto").textContent = formatCurrency(data.pj.impacto_pf);
-  document.getElementById("print-pj-aliquota").textContent = formatPercent(data.pj.aliquota_efetiva_final);
-
-  document.getElementById("print-comp-economia").textContent = formatCurrency(data.comparativo.economia_tributaria);
-  document.getElementById("print-comp-aliquota-pf").textContent = formatPercent(data.comparativo.aliquota_pf);
-  document.getElementById("print-comp-aliquota-pj").textContent = formatPercent(data.comparativo.aliquota_pj_final);
-  document.getElementById("print-comp-receita-pf").textContent = formatCurrency(data.comparativo.receita_liquida_pf);
-  document.getElementById("print-comp-lucro-pj").textContent = formatCurrency(data.comparativo.lucro_liquido_pj);
-
-  document.getElementById("print-analise-tributos-pf").textContent = formatCurrency(data.pf.total_tributos);
-  document.getElementById("print-analise-impostos-pj").textContent = formatCurrency(data.pj.total_impostos);
-  document.getElementById("print-analise-impacto-pf").textContent = formatCurrency(data.pj.impacto_pf);
-  document.getElementById("print-parecer").textContent = getParecerText(data);
+  document.getElementById("print-cmp-pf-rendimento").textContent = formatCurrency(data.pf.rendimento_anual);
+  document.getElementById("print-cmp-pf-inss").textContent = formatCurrency(data.pf.inss);
+  document.getElementById("print-cmp-pf-irpf").textContent = formatCurrency(data.pf.irpf);
+  document.getElementById("print-cmp-pj-irpj").textContent = formatCurrency(data.pj.irpj_total);
+  document.getElementById("print-cmp-pj-csll").textContent = formatCurrency(data.pj.csll);
+  document.getElementById("print-cmp-pj-pis").textContent = formatCurrency(data.pj.pis);
+  document.getElementById("print-cmp-pj-cofins").textContent = formatCurrency(data.pj.cofins);
+  document.getElementById("print-cmp-pj-iss").textContent = formatCurrency(data.pj.iss);
+  document.getElementById("print-cmp-pf-total-tributos").textContent = formatCurrency(data.pf.total_tributos);
+  document.getElementById("print-cmp-pj-total-impostos").textContent = formatCurrency(data.pj.total_impostos);
+  document.getElementById("print-cmp-pj-impacto-pf").textContent = formatCurrency(data.pj.impacto_pf);
+  document.getElementById("print-cmp-pf-aliquota").textContent = formatPercent(data.pf.aliquota_efetiva);
+  document.getElementById("print-cmp-pj-aliquota-final").textContent = formatPercent(data.pj.aliquota_efetiva_final);
+  document.getElementById("print-cmp-pf-receita").textContent = formatCurrency(data.pf.receita_liquida);
+  document.getElementById("print-cmp-pj-lucro").textContent = formatCurrency(data.pj.lucro_liquido);
+  document.getElementById("print-cmp-pj-dividendos").textContent = formatCurrency(data.pj.dividendos);
 }
 
 function updateConsolidated(data) {
@@ -494,11 +494,11 @@ async function generatePdf() {
 
     const filenameBase = (state.nome_cliente || "simulacao").replace(/\s+/g, "_").toLowerCase();
     const options = {
-      margin: [10, 10, 10, 10],
+      margin: [6, 6, 6, 6],
       filename: `${filenameBase}_pf_pj.pdf`,
       image: { type: "jpeg", quality: 0.95 },
       html2canvas: {
-        scale: 2,
+        scale: 1.6,
         useCORS: true,
         allowTaint: true,
         backgroundColor: "#ffffff",
@@ -545,7 +545,8 @@ if (pdfButton) {
   pdfButton.addEventListener("click", generatePdf);
 }
 
-document.getElementById("save-session").addEventListener("click", async () => {
+document.getElementById("save-session").addEventListener("click", async (event) => {
+  event.preventDefault();
   try {
     if (!getToken()) {
       loginOverlay.classList.remove("hidden");
@@ -580,7 +581,7 @@ document.getElementById("save-session").addEventListener("click", async () => {
     }
     await loadHistory();
     await loadAnalysis();
-    statusIndicator.textContent = "Simulação salva";
+    statusIndicator.textContent = "Nova sessão salva";
   } catch (error) {
     statusError.textContent = "Nao foi possivel salvar a simulacao.";
     statusError.classList.remove("hidden");
@@ -738,6 +739,15 @@ if (loginButton) {
   loginButton.addEventListener("click", handleLogin);
 }
 
+[loginUser, loginPass].forEach((input) => {
+  if (!input) return;
+  input.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    handleLogin();
+  });
+});
+
 function enforceLogin() {
   const token = getToken();
   if (!token) {
@@ -795,7 +805,9 @@ async function loadConfig() {
     const response = await authFetch(`${API_BASE}/config`);
     if (!response.ok) return;
     const data = await response.json();
+    currentConfig = data;
     configArea.value = JSON.stringify(data, null, 2);
+    syncPresumedProfitRateInput(data);
   } catch (error) {
     statusError.textContent = "Faça login para acessar os parâmetros.";
     statusError.classList.remove("hidden");
@@ -814,9 +826,53 @@ async function saveConfig() {
     if (!response.ok) {
       throw new Error("Falha ao salvar");
     }
+    currentConfig = parsed;
+    syncPresumedProfitRateInput(parsed);
     statusIndicator.textContent = "Parâmetros salvos";
   } catch (error) {
     statusError.textContent = "JSON inválido ou erro ao salvar parâmetros.";
+    statusError.classList.remove("hidden");
+  }
+}
+
+function syncPresumedProfitRateInput(config) {
+  if (!presumedProfitRateInput) return;
+  const rate = Number(config?.pj?.presumed_profit_rate);
+  if (!Number.isFinite(rate)) return;
+  presumedProfitRateInput.value = (rate * 100).toFixed(2).replace(/\.00$/, "");
+}
+
+async function persistPresumedProfitRate() {
+  if (!presumedProfitRateInput || !getToken()) return;
+  const rawValue = Number(presumedProfitRateInput.value);
+  if (!Number.isFinite(rawValue) || rawValue < 0 || rawValue > 100) {
+    setError("presumed_profit_rate", "Informe um percentual entre 0 e 100");
+    return;
+  }
+
+  setError("presumed_profit_rate", "");
+  const nextConfig = JSON.parse(JSON.stringify(currentConfig || {}));
+  nextConfig.pj = nextConfig.pj || {};
+  nextConfig.pj.presumed_profit_rate = rawValue / 100;
+
+  try {
+    const response = await authFetch(`${API_BASE}/config`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(nextConfig),
+    });
+    if (!response.ok) {
+      throw new Error("Falha ao salvar");
+    }
+    currentConfig = nextConfig;
+    if (configArea) {
+      configArea.value = JSON.stringify(nextConfig, null, 2);
+    }
+    syncPresumedProfitRateInput(nextConfig);
+    statusIndicator.textContent = "Parâmetros salvos";
+    calculate();
+  } catch (error) {
+    statusError.textContent = "Não foi possível salvar o percentual de presunção.";
     statusError.classList.remove("hidden");
   }
 }
@@ -827,6 +883,15 @@ if (configRefresh) {
 
 if (configSave) {
   configSave.addEventListener("click", saveConfig);
+}
+
+if (presumedProfitRateInput) {
+  presumedProfitRateInput.addEventListener("input", () => {
+    clearTimeout(configSaveTimer);
+    configSaveTimer = setTimeout(() => {
+      persistPresumedProfitRate();
+    }, 400);
+  });
 }
 
 window.addEventListener("resize", () => {

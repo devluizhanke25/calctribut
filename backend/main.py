@@ -81,6 +81,7 @@ def login(payload: dict) -> dict:
 
 @app.post("/calculate")
 def calculate(payload: CalculationInput, _user: str = Depends(_require_auth)) -> dict:
+    rules = get_rules()
     annual_expenses = {
         "secretaria": payload.despesas_anuais.secretaria,
         "aluguel_condominio": payload.despesas_anuais.aluguel_condominio,
@@ -106,9 +107,9 @@ def calculate(payload: CalculationInput, _user: str = Depends(_require_auth)) ->
     result["assumptions"] = {
         "annual_expenses": annual_expenses["total"],
         "min_wage_used": payload.salario_minimo or DEFAULT_MIN_WAGE,
-        "presumed_profit_rate": 0.32,
-        "pis_rate": 0.0065,
-        "cofins_rate": 0.03,
+        "presumed_profit_rate": rules["pj"]["presumed_profit_rate"],
+        "pis_rate": rules["pj"]["pis_rate"],
+        "cofins_rate": rules["pj"]["cofins_rate"],
     }
 
     return result
@@ -144,7 +145,7 @@ def save_simulation(payload: CalculationInput, _user: str = Depends(_require_aut
     now = datetime.now()
     empresa_dir = DATA_DIR / _slugify(nome_empresa)
     empresa_dir.mkdir(parents=True, exist_ok=True)
-    file_id = now.strftime("%Y-%m-%d_%H%M%S")
+    file_id = now.strftime("%Y-%m-%d_%H%M%S_%f")
     record = {
         "id": f"{_slugify(nome_empresa)}/{file_id}",
         "created_at": now.isoformat(),
