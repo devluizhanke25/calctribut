@@ -323,6 +323,7 @@ def calculate() -> Any:
     except ValueError as exc:
         return _json_error(str(exc), 400)
 
+    rules = get_rules()
     result = calculate_all(
         monthly_income=parsed["rendimento_mensal"],
         annual_expenses=parsed["annual_expenses"],
@@ -334,9 +335,9 @@ def calculate() -> Any:
     result["assumptions"] = {
         "annual_expenses": parsed["annual_expenses"]["total"],
         "min_wage_used": parsed["salario_minimo"] or DEFAULT_MIN_WAGE,
-        "presumed_profit_rate": 0.32,
-        "pis_rate": 0.0065,
-        "cofins_rate": 0.03,
+        "presumed_profit_rate": rules["pj"]["presumed_profit_rate"],
+        "pis_rate": rules["pj"]["pis_rate"],
+        "cofins_rate": rules["pj"]["cofins_rate"],
     }
 
     return jsonify(result)
@@ -346,9 +347,6 @@ def calculate() -> Any:
 def save_simulation() -> Any:
     if not _require_auth():
         return _json_error("Nao autorizado", 401)
-    kv_guard = _require_kv_if_vercel()
-    if kv_guard:
-        return kv_guard
 
     payload = _get_payload()
     if payload is None:
@@ -402,9 +400,6 @@ def save_simulation() -> Any:
 def list_simulations() -> Any:
     if not _require_auth():
         return _json_error("Nao autorizado", 401)
-    kv_guard = _require_kv_if_vercel()
-    if kv_guard:
-        return kv_guard
 
     records = []
     for payload in _load_records():
@@ -424,9 +419,6 @@ def list_simulations() -> Any:
 def load_simulation(sim_id: str) -> Any:
     if not _require_auth():
         return _json_error("Nao autorizado", 401)
-    kv_guard = _require_kv_if_vercel()
-    if kv_guard:
-        return kv_guard
 
     safe_id = sim_id.replace("..", "").strip("/")
     payload = _get_record(safe_id)
@@ -439,9 +431,6 @@ def load_simulation(sim_id: str) -> Any:
 def delete_simulation(sim_id: str) -> Any:
     if not _require_auth():
         return _json_error("Nao autorizado", 401)
-    kv_guard = _require_kv_if_vercel()
-    if kv_guard:
-        return kv_guard
 
     safe_id = sim_id.replace("..", "").strip("/")
     payload = _get_record(safe_id)
@@ -455,9 +444,6 @@ def delete_simulation(sim_id: str) -> Any:
 def analysis() -> Any:
     if not _require_auth():
         return _json_error("Nao autorizado", 401)
-    kv_guard = _require_kv_if_vercel()
-    if kv_guard:
-        return kv_guard
 
     rows: list[dict[str, Any]] = []
     for payload in _load_records():
