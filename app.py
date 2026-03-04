@@ -9,18 +9,19 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import requests
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, send_from_directory
 
 from backend.calculations import calculate_all
 from backend.constants import DEFAULT_MIN_WAGE, get_rules, save_rules
 
 BASE_DIR = Path(__file__).resolve().parent
+FRONTEND_DIR = BASE_DIR / "frontend"
 # Use absolute paths to avoid cwd issues on Vercel.
 app = Flask(
     __name__,
     static_folder=str(BASE_DIR / "static"),
     static_url_path="/static",
-    template_folder=str(BASE_DIR / "templates"),
+    template_folder=str(FRONTEND_DIR),
 )
 # Vercel filesystem is read-only except for /tmp.
 if os.getenv("VERCEL") or os.getenv("VERCEL_ENV"):
@@ -216,6 +217,21 @@ def _require_auth() -> Optional[str]:
 
 def _json_error(message: str, status_code: int) -> tuple[Any, int]:
     return jsonify({"detail": message}), status_code
+
+
+@app.get("/styles.css")
+def frontend_styles() -> Any:
+    return send_from_directory(FRONTEND_DIR, "styles.css")
+
+
+@app.get("/app.js")
+def frontend_app_js() -> Any:
+    return send_from_directory(FRONTEND_DIR, "app.js")
+
+
+@app.get("/img/<path:filename>")
+def frontend_img(filename: str) -> Any:
+    return send_from_directory(FRONTEND_DIR / "img", filename)
 
 
 def _to_float(value: Any, field_name: str, default: float = 0.0) -> float:
