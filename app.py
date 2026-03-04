@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import requests
-from flask import Flask, jsonify, render_template, request, send_from_directory
+from flask import Flask, Response, jsonify, render_template, request, send_from_directory
 
 from backend.calculations import calculate_all
 from backend.constants import DEFAULT_MIN_WAGE, get_rules, save_rules
@@ -226,7 +226,9 @@ def frontend_styles() -> Any:
 
 @app.get("/app.js")
 def frontend_app_js() -> Any:
-    return send_from_directory(BASE_DIR / "static", "app.js")
+    app_js = (FRONTEND_DIR / "app.js").read_text(encoding="utf-8-sig")
+    app_js = app_js.replace('const API_BASE = "http://127.0.0.1:8000";', 'const API_BASE = "";')
+    return Response(app_js, mimetype="application/javascript")
 
 
 @app.get("/img/<path:filename>")
