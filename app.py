@@ -226,7 +226,7 @@ def frontend_styles() -> Any:
 
 @app.get("/app.js")
 def frontend_app_js() -> Any:
-    return send_from_directory(FRONTEND_DIR, "app.js")
+    return send_from_directory(BASE_DIR / "static", "app.js")
 
 
 @app.get("/img/<path:filename>")
