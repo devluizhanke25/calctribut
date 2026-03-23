@@ -335,7 +335,10 @@ def calculate() -> Any:
     result["assumptions"] = {
         "annual_expenses": parsed["annual_expenses"]["total"],
         "min_wage_used": parsed["salario_minimo"] or DEFAULT_MIN_WAGE,
-        "presumed_profit_rate": rules["pj"]["presumed_profit_rate"],
+        "presumed_profit_regime": rules["pj"]["presumed_profit_regime"],
+        "standard_irpj_presumed_rate": rules["pj"]["standard_irpj_presumed_rate"],
+        "standard_csll_presumed_rate": rules["pj"]["standard_csll_presumed_rate"],
+        "hospital_presumed_rate": rules["pj"]["hospital_presumed_rate"],
         "pis_rate": rules["pj"]["pis_rate"],
         "cofins_rate": rules["pj"]["cofins_rate"],
     }
