@@ -424,10 +424,131 @@
     <section class="panel" id="parametros" role="tabpanel">
       <div class="panel-header">
         <h2>Parâmetros tributários</h2>
-        <p class="muted">Edite as regras em JSON e salve.</p>
+        <p class="muted">Edite as regras no formulário e salve. O JSON é atualizado internamente.</p>
       </div>
       <div class="card">
-        <textarea id="config-json" class="config-area" rows="18"></textarea>
+        <div class="config-toolbar">
+          <label class="toggle-option" for="config-lock">
+            <input id="config-lock" type="checkbox" checked />
+            <span>Bloquear edição dos parâmetros</span>
+          </label>
+          <p class="muted">Desmarque para liberar alterações.</p>
+        </div>
+        <form id="config-form" class="config-form" novalidate>
+          <div class="config-grid">
+            <section class="config-section">
+              <h3>Configuração geral</h3>
+              <div class="field">
+                <label for="config-version">Versão das regras</label>
+                <input id="config-version" type="text" />
+              </div>
+            </section>
+
+            <section class="config-section">
+              <h3>Pessoa Física</h3>
+              <div class="field">
+                <label for="config-pf-irpf-flat">IRPF alíquota fixa (%)</label>
+                <input id="config-pf-irpf-flat" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+              </div>
+              <div class="field">
+                <label for="config-pf-inss-pf-rate">INSS PF (%)</label>
+                <input id="config-pf-inss-pf-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+              </div>
+              <div class="field">
+                <label for="config-pf-prolabore-inss-rate">INSS pró-labore (%)</label>
+                <input id="config-pf-prolabore-inss-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+              </div>
+            </section>
+
+            <section class="config-section">
+              <h3>Regime de presunção</h3>
+              <div class="regime-selector config-regime-selector">
+                <label class="regime-option" for="config-regime-standard">
+                  <input id="config-regime-standard" name="config-regime" type="radio" />
+                  <span>Regime padrão</span>
+                </label>
+                <label class="regime-option" for="config-regime-hospital">
+                  <input id="config-regime-hospital" name="config-regime" type="radio" />
+                  <span>Regime hospitalar</span>
+                </label>
+              </div>
+              <div class="config-inline-grid">
+                <div class="field">
+                  <label for="config-pj-standard-irpj-presumed-rate">Base presumida IRPJ padrão (%)</label>
+                  <input id="config-pj-standard-irpj-presumed-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+                </div>
+                <div class="field">
+                  <label for="config-pj-standard-csll-presumed-rate">Base presumida CSLL padrão (%)</label>
+                  <input id="config-pj-standard-csll-presumed-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+                </div>
+                <div class="field">
+                  <label for="config-pj-hospital-presumed-rate">Base presumida hospitalar (%)</label>
+                  <input id="config-pj-hospital-presumed-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+                </div>
+              </div>
+            </section>
+
+            <section class="config-section">
+              <h3>Pessoa Jurídica</h3>
+              <div class="config-inline-grid">
+                <div class="field">
+                  <label for="config-pj-irpj-rate">Alíquota IRPJ (%)</label>
+                  <input id="config-pj-irpj-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+                </div>
+                <div class="field">
+                  <label for="config-pj-irpj-additional-rate">Adicional IRPJ (%)</label>
+                  <input id="config-pj-irpj-additional-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+                </div>
+                <div class="field">
+                  <label for="config-pj-irpj-additional-threshold">Limite adicional IRPJ (R$)</label>
+                  <input id="config-pj-irpj-additional-threshold" type="number" min="0" step="0.01" inputmode="decimal" />
+                </div>
+                <div class="field">
+                  <label for="config-pj-csll-rate">Alíquota CSLL (%)</label>
+                  <input id="config-pj-csll-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+                </div>
+                <div class="field">
+                  <label for="config-pj-pis-rate">PIS (%)</label>
+                  <input id="config-pj-pis-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+                </div>
+                <div class="field">
+                  <label for="config-pj-cofins-rate">COFINS (%)</label>
+                  <input id="config-pj-cofins-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+                </div>
+                <div class="field">
+                  <label for="config-pj-cbs-rate">CBS (%)</label>
+                  <input id="config-pj-cbs-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+                </div>
+                <div class="field">
+                  <label for="config-pj-ibs-rate">IBS (%)</label>
+                  <input id="config-pj-ibs-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+                </div>
+                <div class="field">
+                  <label for="config-pj-inss-folha-rate">INSS folha (%)</label>
+                  <input id="config-pj-inss-folha-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+                </div>
+              </div>
+            </section>
+
+            <section class="config-section">
+              <h3>Recursos ativos</h3>
+              <div class="config-toggle-grid">
+                <label class="toggle-option" for="config-pj-cbs-enabled">
+                  <input id="config-pj-cbs-enabled" type="checkbox" />
+                  <span>Habilitar CBS</span>
+                </label>
+                <label class="toggle-option" for="config-pj-ibs-enabled">
+                  <input id="config-pj-ibs-enabled" type="checkbox" />
+                  <span>Habilitar IBS</span>
+                </label>
+                <label class="toggle-option" for="config-pj-double-expense-in-pj">
+                  <input id="config-pj-double-expense-in-pj" type="checkbox" />
+                  <span>Duplicar despesas no cálculo PJ</span>
+                </label>
+              </div>
+            </section>
+          </div>
+        </form>
         <div class="actions">
           <button id="config-refresh" class="ghost">Recarregar</button>
           <button id="config-save" class="primary">Salvar parâmetros</button>

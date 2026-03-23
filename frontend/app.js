@@ -36,9 +36,31 @@ const appShell = document.querySelector(".app-shell");
 const sidebarBackdrop = document.getElementById("sidebar-backdrop");
 const sidebarClose = document.getElementById("sidebar-close");
 const logoutButton = document.getElementById("logout-btn");
-const configArea = document.getElementById("config-json");
+const configForm = document.getElementById("config-form");
 const configRefresh = document.getElementById("config-refresh");
 const configSave = document.getElementById("config-save");
+const configLockInput = document.getElementById("config-lock");
+const configVersionInput = document.getElementById("config-version");
+const configPfIrpfFlatInput = document.getElementById("config-pf-irpf-flat");
+const configPfInssPfRateInput = document.getElementById("config-pf-inss-pf-rate");
+const configPfProlaboreInssRateInput = document.getElementById("config-pf-prolabore-inss-rate");
+const configRegimeStandard = document.getElementById("config-regime-standard");
+const configRegimeHospital = document.getElementById("config-regime-hospital");
+const configPjStandardIrpjPresumedRateInput = document.getElementById("config-pj-standard-irpj-presumed-rate");
+const configPjStandardCsllPresumedRateInput = document.getElementById("config-pj-standard-csll-presumed-rate");
+const configPjHospitalPresumedRateInput = document.getElementById("config-pj-hospital-presumed-rate");
+const configPjIrpjRateInput = document.getElementById("config-pj-irpj-rate");
+const configPjIrpjAdditionalRateInput = document.getElementById("config-pj-irpj-additional-rate");
+const configPjIrpjAdditionalThresholdInput = document.getElementById("config-pj-irpj-additional-threshold");
+const configPjCsllRateInput = document.getElementById("config-pj-csll-rate");
+const configPjPisRateInput = document.getElementById("config-pj-pis-rate");
+const configPjCofinsRateInput = document.getElementById("config-pj-cofins-rate");
+const configPjCbsRateInput = document.getElementById("config-pj-cbs-rate");
+const configPjIbsRateInput = document.getElementById("config-pj-ibs-rate");
+const configPjInssFolhaRateInput = document.getElementById("config-pj-inss-folha-rate");
+const configPjCbsEnabledInput = document.getElementById("config-pj-cbs-enabled");
+const configPjIbsEnabledInput = document.getElementById("config-pj-ibs-enabled");
+const configPjDoubleExpenseInput = document.getElementById("config-pj-double-expense-in-pj");
 const presumedRegimeStandard = document.getElementById("presumed_regime_standard");
 const presumedRegimeHospital = document.getElementById("presumed_regime_hospital");
 let currentConfig = null;
@@ -53,6 +75,32 @@ const PRESUMED_REGIMES = {
     standard_irpj_presumed_rate: 0.08,
     standard_csll_presumed_rate: 0.12,
     hospital_presumed_rate: 0.32,
+  },
+};
+const DEFAULT_CONFIG = {
+  version: "2026-01",
+  pf: {
+    irpf_flat: 0.275,
+    inss_pf_rate: 0.2,
+    prolabore_inss_rate: 0.11,
+  },
+  pj: {
+    presumed_profit_regime: "standard",
+    standard_irpj_presumed_rate: 0.08,
+    standard_csll_presumed_rate: 0.12,
+    hospital_presumed_rate: 0.32,
+    irpj_rate: 0.15,
+    irpj_additional_rate: 0.1,
+    irpj_additional_threshold: 240000,
+    csll_rate: 0.09,
+    pis_rate: 0.0065,
+    cofins_rate: 0.03,
+    cbs_rate: 0.009,
+    ibs_rate: 0.001,
+    inss_folha_rate: 0.2,
+    cbs_enabled: false,
+    ibs_enabled: false,
+    double_expense_in_pj: true,
   },
 };
 const consolidatedMap = {
@@ -147,6 +195,52 @@ function formatCurrency(value) {
 
 function formatPercent(value) {
   return `${(value * 100).toFixed(2)}%`;
+}
+
+function percentInputValue(value) {
+  return (Number(value) * 100).toFixed(2).replace(/\.00$/, "");
+}
+
+function parseNumberInput(input, label, { percent = false } = {}) {
+  const raw = input?.value?.trim()?.replace(",", ".");
+  const number = Number(raw);
+  if (!Number.isFinite(number) || number < 0) {
+    throw new Error(`${label} inválido`);
+  }
+  return percent ? number / 100 : number;
+}
+
+function mergeConfig(config) {
+  return {
+    version: config?.version || DEFAULT_CONFIG.version,
+    pf: {
+      ...DEFAULT_CONFIG.pf,
+      ...(config?.pf || {}),
+    },
+    pj: {
+      ...DEFAULT_CONFIG.pj,
+      ...(config?.pj || {}),
+    },
+  };
+}
+
+function setConfigLocked(locked) {
+  if (!configForm) return;
+  const fields = configForm.querySelectorAll("input, select, textarea, button");
+  fields.forEach((field) => {
+    if (field === configLockInput) {
+      field.disabled = false;
+      return;
+    }
+    if (field.type === "checkbox" || field.type === "radio" || field.tagName === "BUTTON" || field.tagName === "SELECT") {
+      field.disabled = locked;
+      return;
+    }
+    field.readOnly = locked;
+  });
+  if (configSave) {
+    configSave.disabled = locked;
+  }
 }
 
 function getToken() {
@@ -819,24 +913,92 @@ if (logoutButton) {
 }
 
 async function loadConfig() {
-  if (!configArea || !getToken()) return;
+  if (!configForm || !getToken()) return;
   try {
+    syncConfigForm(DEFAULT_CONFIG);
     const response = await authFetch(`${API_BASE}/config`);
     if (!response.ok) return;
-    const data = await response.json();
+    const data = mergeConfig(await response.json());
     currentConfig = data;
-    configArea.value = JSON.stringify(data, null, 2);
+    syncConfigForm(data);
     syncPresumedProfitRateInput(data);
   } catch (error) {
+    currentConfig = mergeConfig(currentConfig || DEFAULT_CONFIG);
+    syncConfigForm(currentConfig);
     statusError.textContent = "Faça login para acessar os parâmetros.";
     statusError.classList.remove("hidden");
   }
 }
 
+function syncPresumedProfitRateInput(config) {
+  const regime = config?.pj?.presumed_profit_regime === "hospital" ? "hospital" : "standard";
+  setCheckboxGroup(regime);
+}
+
+function syncConfigForm(config) {
+  if (!configForm) return;
+  const mergedConfig = mergeConfig(config);
+  currentConfig = mergedConfig;
+  configVersionInput.value = mergedConfig.version || "";
+  configPfIrpfFlatInput.value = percentInputValue(mergedConfig.pf.irpf_flat);
+  configPfInssPfRateInput.value = percentInputValue(mergedConfig.pf.inss_pf_rate);
+  configPfProlaboreInssRateInput.value = percentInputValue(mergedConfig.pf.prolabore_inss_rate);
+
+  const regime = mergedConfig.pj.presumed_profit_regime === "hospital" ? "hospital" : "standard";
+  configRegimeStandard.checked = regime === "standard";
+  configRegimeHospital.checked = regime === "hospital";
+
+  configPjStandardIrpjPresumedRateInput.value = percentInputValue(mergedConfig.pj.standard_irpj_presumed_rate);
+  configPjStandardCsllPresumedRateInput.value = percentInputValue(mergedConfig.pj.standard_csll_presumed_rate);
+  configPjHospitalPresumedRateInput.value = percentInputValue(mergedConfig.pj.hospital_presumed_rate);
+  configPjIrpjRateInput.value = percentInputValue(mergedConfig.pj.irpj_rate);
+  configPjIrpjAdditionalRateInput.value = percentInputValue(mergedConfig.pj.irpj_additional_rate);
+  configPjIrpjAdditionalThresholdInput.value = String(mergedConfig.pj.irpj_additional_threshold ?? 0);
+  configPjCsllRateInput.value = percentInputValue(mergedConfig.pj.csll_rate);
+  configPjPisRateInput.value = percentInputValue(mergedConfig.pj.pis_rate);
+  configPjCofinsRateInput.value = percentInputValue(mergedConfig.pj.cofins_rate);
+  configPjCbsRateInput.value = percentInputValue(mergedConfig.pj.cbs_rate);
+  configPjIbsRateInput.value = percentInputValue(mergedConfig.pj.ibs_rate);
+  configPjInssFolhaRateInput.value = percentInputValue(mergedConfig.pj.inss_folha_rate);
+  configPjCbsEnabledInput.checked = Boolean(mergedConfig.pj.cbs_enabled);
+  configPjIbsEnabledInput.checked = Boolean(mergedConfig.pj.ibs_enabled);
+  configPjDoubleExpenseInput.checked = Boolean(mergedConfig.pj.double_expense_in_pj);
+}
+
+function buildConfigFromForm() {
+  const regime = configRegimeHospital?.checked ? "hospital" : "standard";
+  return {
+    version: configVersionInput.value.trim(),
+    pf: {
+      irpf_flat: parseNumberInput(configPfIrpfFlatInput, "IRPF", { percent: true }),
+      inss_pf_rate: parseNumberInput(configPfInssPfRateInput, "INSS PF", { percent: true }),
+      prolabore_inss_rate: parseNumberInput(configPfProlaboreInssRateInput, "INSS pró-labore", { percent: true }),
+    },
+    pj: {
+      presumed_profit_regime: regime,
+      standard_irpj_presumed_rate: parseNumberInput(configPjStandardIrpjPresumedRateInput, "Base IRPJ padrão", { percent: true }),
+      standard_csll_presumed_rate: parseNumberInput(configPjStandardCsllPresumedRateInput, "Base CSLL padrão", { percent: true }),
+      hospital_presumed_rate: parseNumberInput(configPjHospitalPresumedRateInput, "Base hospitalar", { percent: true }),
+      irpj_rate: parseNumberInput(configPjIrpjRateInput, "Alíquota IRPJ", { percent: true }),
+      irpj_additional_rate: parseNumberInput(configPjIrpjAdditionalRateInput, "Adicional IRPJ", { percent: true }),
+      irpj_additional_threshold: parseNumberInput(configPjIrpjAdditionalThresholdInput, "Limite adicional IRPJ"),
+      csll_rate: parseNumberInput(configPjCsllRateInput, "Alíquota CSLL", { percent: true }),
+      pis_rate: parseNumberInput(configPjPisRateInput, "PIS", { percent: true }),
+      cofins_rate: parseNumberInput(configPjCofinsRateInput, "COFINS", { percent: true }),
+      cbs_rate: parseNumberInput(configPjCbsRateInput, "CBS", { percent: true }),
+      ibs_rate: parseNumberInput(configPjIbsRateInput, "IBS", { percent: true }),
+      inss_folha_rate: parseNumberInput(configPjInssFolhaRateInput, "INSS folha", { percent: true }),
+      cbs_enabled: Boolean(configPjCbsEnabledInput.checked),
+      ibs_enabled: Boolean(configPjIbsEnabledInput.checked),
+      double_expense_in_pj: Boolean(configPjDoubleExpenseInput.checked),
+    },
+  };
+}
+
 async function saveConfig() {
-  if (!configArea || !getToken()) return;
+  if (!configForm || !getToken()) return;
   try {
-    const parsed = JSON.parse(configArea.value);
+    const parsed = buildConfigFromForm();
     const response = await authFetch(`${API_BASE}/config`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -845,18 +1007,16 @@ async function saveConfig() {
     if (!response.ok) {
       throw new Error("Falha ao salvar");
     }
-    currentConfig = parsed;
-    syncPresumedProfitRateInput(parsed);
+    currentConfig = mergeConfig(parsed);
+    syncConfigForm(currentConfig);
+    syncPresumedProfitRateInput(currentConfig);
+    statusError.classList.add("hidden");
     statusIndicator.textContent = "Parâmetros salvos";
+    calculate();
   } catch (error) {
-    statusError.textContent = "JSON inválido ou erro ao salvar parâmetros.";
+    statusError.textContent = error.message || "Erro ao salvar parâmetros.";
     statusError.classList.remove("hidden");
   }
-}
-
-function syncPresumedProfitRateInput(config) {
-  const regime = config?.pj?.presumed_profit_regime === "hospital" ? "hospital" : "standard";
-  setCheckboxGroup(regime);
 }
 
 async function persistPresumedProfitRate() {
@@ -883,11 +1043,9 @@ async function persistPresumedProfitRate() {
     if (!response.ok) {
       throw new Error("Falha ao salvar");
     }
-    currentConfig = nextConfig;
-    if (configArea) {
-      configArea.value = JSON.stringify(nextConfig, null, 2);
-    }
-    syncPresumedProfitRateInput(nextConfig);
+    currentConfig = mergeConfig(nextConfig);
+    syncConfigForm(currentConfig);
+    syncPresumedProfitRateInput(currentConfig);
     statusIndicator.textContent = "Parâmetros salvos";
     calculate();
   } catch (error) {
@@ -902,6 +1060,12 @@ if (configRefresh) {
 
 if (configSave) {
   configSave.addEventListener("click", saveConfig);
+}
+
+if (configLockInput) {
+  configLockInput.addEventListener("change", () => {
+    setConfigLocked(configLockInput.checked);
+  });
 }
 
 function schedulePresumedProfitSave() {
@@ -940,6 +1104,10 @@ if (presumedRegimeHospital) {
 if (!presumedRegimeStandard?.checked && !presumedRegimeHospital?.checked) {
   setCheckboxGroup("standard");
 }
+
+currentConfig = mergeConfig(DEFAULT_CONFIG);
+syncConfigForm(currentConfig);
+setConfigLocked(true);
 
 window.addEventListener("resize", () => {
   if (window.innerWidth > 900) {
