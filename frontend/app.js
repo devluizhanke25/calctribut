@@ -39,9 +39,22 @@ const logoutButton = document.getElementById("logout-btn");
 const configArea = document.getElementById("config-json");
 const configRefresh = document.getElementById("config-refresh");
 const configSave = document.getElementById("config-save");
-const presumedProfitRateInput = document.getElementById("presumed_profit_rate");
+const presumedRegimeStandard = document.getElementById("presumed_regime_standard");
+const presumedRegimeHospital = document.getElementById("presumed_regime_hospital");
 let currentConfig = null;
 let configSaveTimer = null;
+const PRESUMED_REGIMES = {
+  standard: {
+    standard_irpj_presumed_rate: 0.08,
+    standard_csll_presumed_rate: 0.12,
+    hospital_presumed_rate: 0.32,
+  },
+  hospital: {
+    standard_irpj_presumed_rate: 0.08,
+    standard_csll_presumed_rate: 0.12,
+    hospital_presumed_rate: 0.32,
+  },
+};
 const consolidatedMap = {
   "cons-rendimento": () => formatCurrency(state.rendimento_mensal),
   "cons-prolabore": () => formatCurrency(state.pro_labore),
@@ -349,10 +362,16 @@ function setDefaults() {
     }
     setInputValue(key, value);
   });
-  if (presumedProfitRateInput) {
-    presumedProfitRateInput.value = "32";
-  }
   updateResumo();
+}
+
+function setCheckboxGroup(regime) {
+  if (presumedRegimeStandard) {
+    presumedRegimeStandard.checked = regime === "standard";
+  }
+  if (presumedRegimeHospital) {
+    presumedRegimeHospital.checked = regime === "hospital";
+  }
 }
 
 function initTabs() {
@@ -836,24 +855,24 @@ async function saveConfig() {
 }
 
 function syncPresumedProfitRateInput(config) {
-  if (!presumedProfitRateInput) return;
-  const rate = Number(config?.pj?.presumed_profit_rate);
-  if (!Number.isFinite(rate)) return;
-  presumedProfitRateInput.value = (rate * 100).toFixed(2).replace(/\.00$/, "");
+  const regime = config?.pj?.presumed_profit_regime === "hospital" ? "hospital" : "standard";
+  setCheckboxGroup(regime);
 }
 
 async function persistPresumedProfitRate() {
-  if (!presumedProfitRateInput || !getToken()) return;
-  const rawValue = Number(presumedProfitRateInput.value);
-  if (!Number.isFinite(rawValue) || rawValue < 0 || rawValue > 100) {
-    setError("presumed_profit_rate", "Informe um percentual entre 0 e 100");
+  if (!getToken()) return;
+
+  const regime = presumedRegimeHospital?.checked ? "hospital" : presumedRegimeStandard?.checked ? "standard" : null;
+  if (!regime) {
+    setError("presumed_profit_regime", "Selecione um regime");
     return;
   }
 
-  setError("presumed_profit_rate", "");
+  setError("presumed_profit_regime", "");
   const nextConfig = JSON.parse(JSON.stringify(currentConfig || {}));
   nextConfig.pj = nextConfig.pj || {};
-  nextConfig.pj.presumed_profit_rate = rawValue / 100;
+  nextConfig.pj.presumed_profit_regime = regime;
+  Object.assign(nextConfig.pj, PRESUMED_REGIMES[regime]);
 
   try {
     const response = await authFetch(`${API_BASE}/config`, {
@@ -872,7 +891,7 @@ async function persistPresumedProfitRate() {
     statusIndicator.textContent = "Parâmetros salvos";
     calculate();
   } catch (error) {
-    statusError.textContent = "Não foi possível salvar o percentual de presunção.";
+    statusError.textContent = "Não foi possível salvar o regime de presunção.";
     statusError.classList.remove("hidden");
   }
 }
@@ -885,13 +904,41 @@ if (configSave) {
   configSave.addEventListener("click", saveConfig);
 }
 
-if (presumedProfitRateInput) {
-  presumedProfitRateInput.addEventListener("input", () => {
-    clearTimeout(configSaveTimer);
-    configSaveTimer = setTimeout(() => {
-      persistPresumedProfitRate();
-    }, 400);
+function schedulePresumedProfitSave() {
+  clearTimeout(configSaveTimer);
+  configSaveTimer = setTimeout(() => {
+    persistPresumedProfitRate();
+  }, 400);
+}
+
+if (presumedRegimeStandard) {
+  presumedRegimeStandard.addEventListener("change", () => {
+    if (!presumedRegimeStandard.checked) {
+      presumedRegimeStandard.checked = true;
+    }
+    if (presumedRegimeHospital) {
+      presumedRegimeHospital.checked = false;
+    }
+    setCheckboxGroup("standard");
+    schedulePresumedProfitSave();
   });
+}
+
+if (presumedRegimeHospital) {
+  presumedRegimeHospital.addEventListener("change", () => {
+    if (!presumedRegimeHospital.checked) {
+      presumedRegimeHospital.checked = true;
+    }
+    if (presumedRegimeStandard) {
+      presumedRegimeStandard.checked = false;
+    }
+    setCheckboxGroup("hospital");
+    schedulePresumedProfitSave();
+  });
+}
+
+if (!presumedRegimeStandard?.checked && !presumedRegimeHospital?.checked) {
+  setCheckboxGroup("standard");
 }
 
 window.addEventListener("resize", () => {

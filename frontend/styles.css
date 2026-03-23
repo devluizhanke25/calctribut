@@ -611,6 +611,35 @@ label {
   gap: 10px;
 }
 
+.regime-selector {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.regime-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  border-radius: 10px;
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+.regime-option input {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.regime-fields {
+  display: grid;
+  gap: 8px;
+}
+
 input {
   flex: 1;
   padding: 12px 14px;

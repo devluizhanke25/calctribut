@@ -20,7 +20,10 @@ DEFAULT_RULES: Dict[str, Any] = {
         "prolabore_inss_rate": 0.11,
     },
     "pj": {
-        "presumed_profit_rate": 0.32,
+        "presumed_profit_regime": "standard",
+        "standard_irpj_presumed_rate": 0.08,
+        "standard_csll_presumed_rate": 0.12,
+        "hospital_presumed_rate": 0.32,
         "irpj_rate": 0.15,
         "irpj_additional_rate": 0.10,
         "irpj_additional_threshold": 240000,
@@ -100,12 +103,45 @@ def _load_overrides() -> Dict[str, Any]:
     return {}
 
 
+def _normalize_rules(rules: Dict[str, Any]) -> Dict[str, Any]:
+    normalized = dict(rules)
+    pj_rules = dict(normalized.get("pj", {}))
+    legacy_rate = pj_rules.get("presumed_profit_rate")
+
+    if "presumed_profit_regime" not in pj_rules:
+        if legacy_rate == 0.32:
+            pj_rules["presumed_profit_regime"] = "hospital"
+        else:
+            pj_rules["presumed_profit_regime"] = DEFAULT_RULES["pj"]["presumed_profit_regime"]
+
+    if "standard_irpj_presumed_rate" not in pj_rules:
+        if legacy_rate is not None and pj_rules["presumed_profit_regime"] == "standard":
+            pj_rules["standard_irpj_presumed_rate"] = legacy_rate
+        else:
+            pj_rules["standard_irpj_presumed_rate"] = DEFAULT_RULES["pj"]["standard_irpj_presumed_rate"]
+
+    if "standard_csll_presumed_rate" not in pj_rules:
+        if legacy_rate is not None and pj_rules["presumed_profit_regime"] == "standard":
+            pj_rules["standard_csll_presumed_rate"] = legacy_rate
+        else:
+            pj_rules["standard_csll_presumed_rate"] = DEFAULT_RULES["pj"]["standard_csll_presumed_rate"]
+
+    if "hospital_presumed_rate" not in pj_rules:
+        if legacy_rate is not None and pj_rules["presumed_profit_regime"] == "hospital":
+            pj_rules["hospital_presumed_rate"] = legacy_rate
+        else:
+            pj_rules["hospital_presumed_rate"] = DEFAULT_RULES["pj"]["hospital_presumed_rate"]
+
+    normalized["pj"] = pj_rules
+    return normalized
+
+
 def get_rules() -> Dict[str, Any]:
-    return _deep_merge(DEFAULT_RULES, _load_overrides())
+    return _normalize_rules(_deep_merge(DEFAULT_RULES, _load_overrides()))
 
 
 def save_rules(data: Dict[str, Any]) -> None:
-    merged = _deep_merge(DEFAULT_RULES, data)
+    merged = _normalize_rules(_deep_merge(DEFAULT_RULES, data))
     if _kv_config():
         _kv_request("set", RULES_KV_KEY, data=json.dumps(merged, ensure_ascii=False, indent=2))
         return

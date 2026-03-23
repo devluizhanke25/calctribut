@@ -22,6 +22,8 @@ class PFResult:
 @dataclass
 class PJResult:
     base_presumida: float
+    base_presumida_irpj: float
+    base_presumida_csll: float
     irpj: float
     irpj_adicional: float
     irpj_total: float
@@ -45,6 +47,14 @@ class PJResult:
 def _calc_irpj_additional(base_presumida_anual: float, threshold: float, rate: float) -> float:
     excedente = max(base_presumida_anual - threshold, 0.0)
     return excedente * rate
+
+
+def _get_presumed_rates(pj_rules: Dict[str, float | str]) -> tuple[float, float]:
+    regime = pj_rules.get("presumed_profit_regime", "standard")
+    if regime == "hospital":
+        rate = float(pj_rules["hospital_presumed_rate"])
+        return rate, rate
+    return float(pj_rules["standard_irpj_presumed_rate"]), float(pj_rules["standard_csll_presumed_rate"])
 
 
 def calculate_pf(
@@ -96,13 +106,15 @@ def calculate_pj(
 
     annual_income = monthly_income * 12
 
-    base_presumida = annual_income * pj_rules["presumed_profit_rate"]
-    irpj = base_presumida * pj_rules["irpj_rate"]
+    irpj_presumed_rate, csll_presumed_rate = _get_presumed_rates(pj_rules)
+    base_presumida_irpj = annual_income * irpj_presumed_rate
+    base_presumida_csll = annual_income * csll_presumed_rate
+    irpj = base_presumida_irpj * pj_rules["irpj_rate"]
     irpj_adicional = _calc_irpj_additional(
-        base_presumida, pj_rules["irpj_additional_threshold"], pj_rules["irpj_additional_rate"]
+        base_presumida_irpj, pj_rules["irpj_additional_threshold"], pj_rules["irpj_additional_rate"]
     )
     irpj_total = irpj + irpj_adicional
-    csll = base_presumida * pj_rules["csll_rate"]
+    csll = base_presumida_csll * pj_rules["csll_rate"]
     irpj_csll = irpj_total + csll
 
     pis = annual_income * pj_rules["pis_rate"]
@@ -146,7 +158,9 @@ def calculate_pj(
     )
 
     return PJResult(
-        base_presumida=base_presumida,
+        base_presumida=base_presumida_irpj,
+        base_presumida_irpj=base_presumida_irpj,
+        base_presumida_csll=base_presumida_csll,
         irpj=irpj,
         irpj_adicional=irpj_adicional,
         irpj_total=irpj_total,

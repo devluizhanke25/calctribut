@@ -107,7 +107,10 @@ def calculate(payload: CalculationInput, _user: str = Depends(_require_auth)) ->
     result["assumptions"] = {
         "annual_expenses": annual_expenses["total"],
         "min_wage_used": payload.salario_minimo or DEFAULT_MIN_WAGE,
-        "presumed_profit_rate": rules["pj"]["presumed_profit_rate"],
+        "presumed_profit_regime": rules["pj"]["presumed_profit_regime"],
+        "standard_irpj_presumed_rate": rules["pj"]["standard_irpj_presumed_rate"],
+        "standard_csll_presumed_rate": rules["pj"]["standard_csll_presumed_rate"],
+        "hospital_presumed_rate": rules["pj"]["hospital_presumed_rate"],
         "pis_rate": rules["pj"]["pis_rate"],
         "cofins_rate": rules["pj"]["cofins_rate"],
     }
