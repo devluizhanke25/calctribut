@@ -9,18 +9,19 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import requests
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request, send_from_directory
 
 from backend.calculations import calculate_all
 from backend.constants import DEFAULT_MIN_WAGE, get_rules, save_rules
 
 BASE_DIR = Path(__file__).resolve().parent
+FRONTEND_DIR = BASE_DIR / "frontend"
 # Use absolute paths to avoid cwd issues on Vercel.
 app = Flask(
     __name__,
     static_folder=str(BASE_DIR / "static"),
     static_url_path="/static",
-    template_folder=str(BASE_DIR / "templates"),
+    template_folder=str(FRONTEND_DIR),
 )
 # Vercel filesystem is read-only except for /tmp.
 if os.getenv("VERCEL") or os.getenv("VERCEL_ENV"):
@@ -31,9 +32,17 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _get_credentials() -> Dict[str, str]:
+    def _normalize_env_credential(value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        if len(cleaned) >= 2 and cleaned[0] == cleaned[-1] and cleaned[0] in ("'", '"'):
+            cleaned = cleaned[1:-1].strip()
+        return cleaned
+
     env = {
-        "ADMIN_LOGIN": os.getenv("ADMIN_LOGIN"),
-        "ADMIN_PASSWORD": os.getenv("ADMIN_PASSWORD"),
+        "ADMIN_LOGIN": _normalize_env_credential(os.getenv("ADMIN_LOGIN")),
+        "ADMIN_PASSWORD": _normalize_env_credential(os.getenv("ADMIN_PASSWORD")),
     }
     if not env["ADMIN_LOGIN"] or not env["ADMIN_PASSWORD"]:
         env_path = BASE_DIR / ".env"
@@ -43,7 +52,7 @@ def _get_credentials() -> Dict[str, str]:
                     continue
                 key, value = line.split("=", 1)
                 if key.strip() in ("ADMIN_LOGIN", "ADMIN_PASSWORD"):
-                    env[key.strip()] = value.strip()
+                    env[key.strip()] = _normalize_env_credential(value)
     return {
         "login": env.get("ADMIN_LOGIN") or "admin",
         "password": env.get("ADMIN_PASSWORD") or "admin123",
@@ -218,6 +227,23 @@ def _json_error(message: str, status_code: int) -> tuple[Any, int]:
     return jsonify({"detail": message}), status_code
 
 
+@app.get("/styles.css")
+def frontend_styles() -> Any:
+    return send_from_directory(FRONTEND_DIR, "styles.css")
+
+
+@app.get("/app.js")
+def frontend_app_js() -> Any:
+    app_js = (FRONTEND_DIR / "app.js").read_text(encoding="utf-8-sig")
+    app_js = app_js.replace('const API_BASE = "http://127.0.0.1:8000";', 'const API_BASE = "";')
+    return Response(app_js, mimetype="application/javascript")
+
+
+@app.get("/img/<path:filename>")
+def frontend_img(filename: str) -> Any:
+    return send_from_directory(FRONTEND_DIR / "img", filename)
+
+
 def _to_float(value: Any, field_name: str, default: float = 0.0) -> float:
     if value is None:
         return default
@@ -305,6 +331,7 @@ def calculate() -> Any:
     except ValueError as exc:
         return _json_error(str(exc), 400)
 
+    rules = get_rules()
     result = calculate_all(
         monthly_income=parsed["rendimento_mensal"],
         annual_expenses=parsed["annual_expenses"],
@@ -316,9 +343,12 @@ def calculate() -> Any:
     result["assumptions"] = {
         "annual_expenses": parsed["annual_expenses"]["total"],
         "min_wage_used": parsed["salario_minimo"] or DEFAULT_MIN_WAGE,
-        "presumed_profit_rate": 0.32,
-        "pis_rate": 0.0065,
-        "cofins_rate": 0.03,
+        "presumed_profit_regime": rules["pj"]["presumed_profit_regime"],
+        "standard_irpj_presumed_rate": rules["pj"]["standard_irpj_presumed_rate"],
+        "standard_csll_presumed_rate": rules["pj"]["standard_csll_presumed_rate"],
+        "hospital_presumed_rate": rules["pj"]["hospital_presumed_rate"],
+        "pis_rate": rules["pj"]["pis_rate"],
+        "cofins_rate": rules["pj"]["cofins_rate"],
     }
 
     return jsonify(result)
@@ -328,9 +358,6 @@ def calculate() -> Any:
 def save_simulation() -> Any:
     if not _require_auth():
         return _json_error("Nao autorizado", 401)
-    kv_guard = _require_kv_if_vercel()
-    if kv_guard:
-        return kv_guard
 
     payload = _get_payload()
     if payload is None:
@@ -384,9 +411,6 @@ def save_simulation() -> Any:
 def list_simulations() -> Any:
     if not _require_auth():
         return _json_error("Nao autorizado", 401)
-    kv_guard = _require_kv_if_vercel()
-    if kv_guard:
-        return kv_guard
 
     records = []
     for payload in _load_records():
@@ -406,9 +430,6 @@ def list_simulations() -> Any:
 def load_simulation(sim_id: str) -> Any:
     if not _require_auth():
         return _json_error("Nao autorizado", 401)
-    kv_guard = _require_kv_if_vercel()
-    if kv_guard:
-        return kv_guard
 
     safe_id = sim_id.replace("..", "").strip("/")
     payload = _get_record(safe_id)
@@ -421,9 +442,6 @@ def load_simulation(sim_id: str) -> Any:
 def delete_simulation(sim_id: str) -> Any:
     if not _require_auth():
         return _json_error("Nao autorizado", 401)
-    kv_guard = _require_kv_if_vercel()
-    if kv_guard:
-        return kv_guard
 
     safe_id = sim_id.replace("..", "").strip("/")
     payload = _get_record(safe_id)
@@ -437,9 +455,6 @@ def delete_simulation(sim_id: str) -> Any:
 def analysis() -> Any:
     if not _require_auth():
         return _json_error("Nao autorizado", 401)
-    kv_guard = _require_kv_if_vercel()
-    if kv_guard:
-        return kv_guard
 
     rows: list[dict[str, Any]] = []
     for payload in _load_records():

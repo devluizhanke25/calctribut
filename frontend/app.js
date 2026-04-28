@@ -36,9 +36,73 @@ const appShell = document.querySelector(".app-shell");
 const sidebarBackdrop = document.getElementById("sidebar-backdrop");
 const sidebarClose = document.getElementById("sidebar-close");
 const logoutButton = document.getElementById("logout-btn");
-const configArea = document.getElementById("config-json");
+const configForm = document.getElementById("config-form");
 const configRefresh = document.getElementById("config-refresh");
 const configSave = document.getElementById("config-save");
+const configLockInput = document.getElementById("config-lock");
+const configVersionInput = document.getElementById("config-version");
+const configPfIrpfFlatInput = document.getElementById("config-pf-irpf-flat");
+const configPfInssPfRateInput = document.getElementById("config-pf-inss-pf-rate");
+const configPfProlaboreInssRateInput = document.getElementById("config-pf-prolabore-inss-rate");
+const configRegimeStandard = document.getElementById("config-regime-standard");
+const configRegimeHospital = document.getElementById("config-regime-hospital");
+const configPjStandardIrpjPresumedRateInput = document.getElementById("config-pj-standard-irpj-presumed-rate");
+const configPjStandardCsllPresumedRateInput = document.getElementById("config-pj-standard-csll-presumed-rate");
+const configPjHospitalPresumedRateInput = document.getElementById("config-pj-hospital-presumed-rate");
+const configPjIrpjRateInput = document.getElementById("config-pj-irpj-rate");
+const configPjIrpjAdditionalRateInput = document.getElementById("config-pj-irpj-additional-rate");
+const configPjIrpjAdditionalThresholdInput = document.getElementById("config-pj-irpj-additional-threshold");
+const configPjCsllRateInput = document.getElementById("config-pj-csll-rate");
+const configPjPisRateInput = document.getElementById("config-pj-pis-rate");
+const configPjCofinsRateInput = document.getElementById("config-pj-cofins-rate");
+const configPjCbsRateInput = document.getElementById("config-pj-cbs-rate");
+const configPjIbsRateInput = document.getElementById("config-pj-ibs-rate");
+const configPjInssFolhaRateInput = document.getElementById("config-pj-inss-folha-rate");
+const configPjCbsEnabledInput = document.getElementById("config-pj-cbs-enabled");
+const configPjIbsEnabledInput = document.getElementById("config-pj-ibs-enabled");
+const configPjDoubleExpenseInput = document.getElementById("config-pj-double-expense-in-pj");
+const presumedRegimeStandard = document.getElementById("presumed_regime_standard");
+const presumedRegimeHospital = document.getElementById("presumed_regime_hospital");
+let currentConfig = null;
+let configSaveTimer = null;
+const PRESUMED_REGIMES = {
+  standard: {
+    standard_irpj_presumed_rate: 0.08,
+    standard_csll_presumed_rate: 0.12,
+    hospital_presumed_rate: 0.32,
+  },
+  hospital: {
+    standard_irpj_presumed_rate: 0.08,
+    standard_csll_presumed_rate: 0.12,
+    hospital_presumed_rate: 0.32,
+  },
+};
+const DEFAULT_CONFIG = {
+  version: "2026-01",
+  pf: {
+    irpf_flat: 0.275,
+    inss_pf_rate: 0.2,
+    prolabore_inss_rate: 0.11,
+  },
+  pj: {
+    presumed_profit_regime: "standard",
+    standard_irpj_presumed_rate: 0.08,
+    standard_csll_presumed_rate: 0.12,
+    hospital_presumed_rate: 0.32,
+    irpj_rate: 0.15,
+    irpj_additional_rate: 0.1,
+    irpj_additional_threshold: 240000,
+    csll_rate: 0.09,
+    pis_rate: 0.0065,
+    cofins_rate: 0.03,
+    cbs_rate: 0.009,
+    ibs_rate: 0.001,
+    inss_folha_rate: 0.2,
+    cbs_enabled: false,
+    ibs_enabled: false,
+    double_expense_in_pj: true,
+  },
+};
 const consolidatedMap = {
   "cons-rendimento": () => formatCurrency(state.rendimento_mensal),
   "cons-prolabore": () => formatCurrency(state.pro_labore),
@@ -84,21 +148,37 @@ const fieldMap = {
 
 const outputMap = {
   "pf-rendimento": (data) => data.pf.rendimento_anual,
+  "cmp-pf-rendimento": (data) => data.pf.rendimento_anual,
   "pf-inss": (data) => data.pf.inss,
+  "cmp-pf-inss": (data) => data.pf.inss,
   "pf-irpf": (data) => data.pf.irpf,
+  "cmp-pf-irpf": (data) => data.pf.irpf,
   "pf-total-tributos": (data) => data.pf.total_tributos,
+  "cmp-pf-total-tributos": (data) => data.pf.total_tributos,
   "pf-aliquota": (data) => data.pf.aliquota_efetiva,
+  "cmp-pf-aliquota": (data) => data.pf.aliquota_efetiva,
   "pf-receita": (data) => data.pf.receita_liquida,
+  "cmp-pf-receita": (data) => data.pf.receita_liquida,
   "pj-irpj": (data) => data.pj.irpj_total,
+  "cmp-pj-irpj": (data) => data.pj.irpj_total,
   "pj-csll": (data) => data.pj.csll,
+  "cmp-pj-csll": (data) => data.pj.csll,
   "pj-pis": (data) => data.pj.pis,
+  "cmp-pj-pis": (data) => data.pj.pis,
   "pj-cofins": (data) => data.pj.cofins,
+  "cmp-pj-cofins": (data) => data.pj.cofins,
   "pj-iss": (data) => data.pj.iss,
+  "cmp-pj-iss": (data) => data.pj.iss,
   "pj-total-impostos": (data) => data.pj.total_impostos,
+  "cmp-pj-total-impostos": (data) => data.pj.total_impostos,
   "pj-lucro": (data) => data.pj.lucro_liquido,
+  "cmp-pj-lucro": (data) => data.pj.lucro_liquido,
   "pj-dividendos": (data) => data.pj.dividendos,
+  "cmp-pj-dividendos": (data) => data.pj.dividendos,
   "pj-impacto-pf": (data) => data.pj.impacto_pf,
+  "cmp-pj-impacto-pf": (data) => data.pj.impacto_pf,
   "pj-aliquota-final": (data) => data.pj.aliquota_efetiva_final,
+  "cmp-pj-aliquota-final": (data) => data.pj.aliquota_efetiva_final,
   "comp-economia": (data) => data.comparativo.economia_tributaria,
   "comp-aliquota-pf": (data) => data.comparativo.aliquota_pf,
   "comp-aliquota-pj": (data) => data.comparativo.aliquota_pj_final,
@@ -115,6 +195,52 @@ function formatCurrency(value) {
 
 function formatPercent(value) {
   return `${(value * 100).toFixed(2)}%`;
+}
+
+function percentInputValue(value) {
+  return (Number(value) * 100).toFixed(2).replace(/\.00$/, "");
+}
+
+function parseNumberInput(input, label, { percent = false } = {}) {
+  const raw = input?.value?.trim()?.replace(",", ".");
+  const number = Number(raw);
+  if (!Number.isFinite(number) || number < 0) {
+    throw new Error(`${label} inválido`);
+  }
+  return percent ? number / 100 : number;
+}
+
+function mergeConfig(config) {
+  return {
+    version: config?.version || DEFAULT_CONFIG.version,
+    pf: {
+      ...DEFAULT_CONFIG.pf,
+      ...(config?.pf || {}),
+    },
+    pj: {
+      ...DEFAULT_CONFIG.pj,
+      ...(config?.pj || {}),
+    },
+  };
+}
+
+function setConfigLocked(locked) {
+  if (!configForm) return;
+  const fields = configForm.querySelectorAll("input, select, textarea, button");
+  fields.forEach((field) => {
+    if (field === configLockInput) {
+      field.disabled = false;
+      return;
+    }
+    if (field.type === "checkbox" || field.type === "radio" || field.tagName === "BUTTON" || field.tagName === "SELECT") {
+      field.disabled = locked;
+      return;
+    }
+    field.readOnly = locked;
+  });
+  if (configSave) {
+    configSave.disabled = locked;
+  }
 }
 
 function getToken() {
@@ -185,6 +311,7 @@ function updateResumo() {
 function updateCharts(pfRate, pjRate) {
   const pfBar = document.getElementById("bar-pf");
   const pjBar = document.getElementById("bar-pj");
+  if (!pfBar || !pjBar) return;
   const maxRate = Math.max(pfRate, pjRate, 0.01);
   pfBar.style.setProperty("--value", `${(pfRate / maxRate) * 100}%`);
   pjBar.style.setProperty("--value", `${(pjRate / maxRate) * 100}%`);
@@ -212,10 +339,6 @@ function updateExtraCharts(data) {
     pie.style.background = `conic-gradient(#111111 0deg ${pctPj}deg, #d0d0d0 ${pctPj}deg 360deg)`;
   }
 
-  const parecer = document.getElementById("parecer-texto");
-  if (parecer) {
-    parecer.textContent = getParecerText(data);
-  }
 }
 
 function getParecerText(data) {
@@ -336,6 +459,15 @@ function setDefaults() {
   updateResumo();
 }
 
+function setCheckboxGroup(regime) {
+  if (presumedRegimeStandard) {
+    presumedRegimeStandard.checked = regime === "standard";
+  }
+  if (presumedRegimeHospital) {
+    presumedRegimeHospital.checked = regime === "hospital";
+  }
+}
+
 function initTabs() {
   const tabs = document.querySelectorAll(".tab");
   const panels = document.querySelectorAll(".panel");
@@ -375,7 +507,8 @@ if (companyInput) {
   });
 }
 
-document.getElementById("reset").addEventListener("click", () => {
+document.getElementById("reset").addEventListener("click", (event) => {
+  event.preventDefault();
   setDefaults();
   if (getToken()) {
     scheduleCalculation();
@@ -388,42 +521,22 @@ function hydratePrintArea(data) {
   document.getElementById("print-empresa").textContent = state.nome_empresa || "-";
   document.getElementById("print-data").textContent = today.toLocaleDateString("pt-BR");
 
-  document.getElementById("print-rendimento").textContent = formatCurrency(state.rendimento_mensal);
-  document.getElementById("print-prolabore").textContent = formatCurrency(state.pro_labore);
-  document.getElementById("print-iss").textContent = formatCurrency(state.iss_fixo);
-  document.getElementById("print-salario").textContent = formatCurrency(state.salario_minimo);
-  document.getElementById("print-despesas").textContent = formatCurrency(
-    state.secretaria + state.aluguel_condominio + state.contador + state.outras_despesas
-  );
-
-  document.getElementById("print-pf-rendimento").textContent = formatCurrency(data.pf.rendimento_anual);
-  document.getElementById("print-pf-inss").textContent = formatCurrency(data.pf.inss);
-  document.getElementById("print-pf-irpf").textContent = formatCurrency(data.pf.irpf);
-  document.getElementById("print-pf-total").textContent = formatCurrency(data.pf.total_tributos);
-  document.getElementById("print-pf-aliquota").textContent = formatPercent(data.pf.aliquota_efetiva);
-  document.getElementById("print-pf-receita").textContent = formatCurrency(data.pf.receita_liquida);
-
-  document.getElementById("print-pj-irpj").textContent = formatCurrency(data.pj.irpj_total);
-  document.getElementById("print-pj-csll").textContent = formatCurrency(data.pj.csll);
-  document.getElementById("print-pj-pis").textContent = formatCurrency(data.pj.pis);
-  document.getElementById("print-pj-cofins").textContent = formatCurrency(data.pj.cofins);
-  document.getElementById("print-pj-iss").textContent = formatCurrency(data.pj.iss);
-  document.getElementById("print-pj-total").textContent = formatCurrency(data.pj.total_impostos);
-  document.getElementById("print-pj-lucro").textContent = formatCurrency(data.pj.lucro_liquido);
-  document.getElementById("print-pj-dividendos").textContent = formatCurrency(data.pj.dividendos);
-  document.getElementById("print-pj-impacto").textContent = formatCurrency(data.pj.impacto_pf);
-  document.getElementById("print-pj-aliquota").textContent = formatPercent(data.pj.aliquota_efetiva_final);
-
-  document.getElementById("print-comp-economia").textContent = formatCurrency(data.comparativo.economia_tributaria);
-  document.getElementById("print-comp-aliquota-pf").textContent = formatPercent(data.comparativo.aliquota_pf);
-  document.getElementById("print-comp-aliquota-pj").textContent = formatPercent(data.comparativo.aliquota_pj_final);
-  document.getElementById("print-comp-receita-pf").textContent = formatCurrency(data.comparativo.receita_liquida_pf);
-  document.getElementById("print-comp-lucro-pj").textContent = formatCurrency(data.comparativo.lucro_liquido_pj);
-
-  document.getElementById("print-analise-tributos-pf").textContent = formatCurrency(data.pf.total_tributos);
-  document.getElementById("print-analise-impostos-pj").textContent = formatCurrency(data.pj.total_impostos);
-  document.getElementById("print-analise-impacto-pf").textContent = formatCurrency(data.pj.impacto_pf);
-  document.getElementById("print-parecer").textContent = getParecerText(data);
+  document.getElementById("print-cmp-pf-rendimento").textContent = formatCurrency(data.pf.rendimento_anual);
+  document.getElementById("print-cmp-pf-inss").textContent = formatCurrency(data.pf.inss);
+  document.getElementById("print-cmp-pf-irpf").textContent = formatCurrency(data.pf.irpf);
+  document.getElementById("print-cmp-pj-irpj").textContent = formatCurrency(data.pj.irpj_total);
+  document.getElementById("print-cmp-pj-csll").textContent = formatCurrency(data.pj.csll);
+  document.getElementById("print-cmp-pj-pis").textContent = formatCurrency(data.pj.pis);
+  document.getElementById("print-cmp-pj-cofins").textContent = formatCurrency(data.pj.cofins);
+  document.getElementById("print-cmp-pj-iss").textContent = formatCurrency(data.pj.iss);
+  document.getElementById("print-cmp-pf-total-tributos").textContent = formatCurrency(data.pf.total_tributos);
+  document.getElementById("print-cmp-pj-total-impostos").textContent = formatCurrency(data.pj.total_impostos);
+  document.getElementById("print-cmp-pj-impacto-pf").textContent = formatCurrency(data.pj.impacto_pf);
+  document.getElementById("print-cmp-pf-aliquota").textContent = formatPercent(data.pf.aliquota_efetiva);
+  document.getElementById("print-cmp-pj-aliquota-final").textContent = formatPercent(data.pj.aliquota_efetiva_final);
+  document.getElementById("print-cmp-pf-receita").textContent = formatCurrency(data.pf.receita_liquida);
+  document.getElementById("print-cmp-pj-lucro").textContent = formatCurrency(data.pj.lucro_liquido);
+  document.getElementById("print-cmp-pj-dividendos").textContent = formatCurrency(data.pj.dividendos);
 }
 
 function updateConsolidated(data) {
@@ -494,11 +607,11 @@ async function generatePdf() {
 
     const filenameBase = (state.nome_cliente || "simulacao").replace(/\s+/g, "_").toLowerCase();
     const options = {
-      margin: [10, 10, 10, 10],
+      margin: [6, 6, 6, 6],
       filename: `${filenameBase}_pf_pj.pdf`,
       image: { type: "jpeg", quality: 0.95 },
       html2canvas: {
-        scale: 2,
+        scale: 1.6,
         useCORS: true,
         allowTaint: true,
         backgroundColor: "#ffffff",
@@ -545,7 +658,8 @@ if (pdfButton) {
   pdfButton.addEventListener("click", generatePdf);
 }
 
-document.getElementById("save-session").addEventListener("click", async () => {
+document.getElementById("save-session").addEventListener("click", async (event) => {
+  event.preventDefault();
   try {
     if (!getToken()) {
       loginOverlay.classList.remove("hidden");
@@ -580,7 +694,7 @@ document.getElementById("save-session").addEventListener("click", async () => {
     }
     await loadHistory();
     await loadAnalysis();
-    statusIndicator.textContent = "Simulação salva";
+    statusIndicator.textContent = "Nova sessão salva";
   } catch (error) {
     statusError.textContent = "Nao foi possivel salvar a simulacao.";
     statusError.classList.remove("hidden");
@@ -738,6 +852,15 @@ if (loginButton) {
   loginButton.addEventListener("click", handleLogin);
 }
 
+[loginUser, loginPass].forEach((input) => {
+  if (!input) return;
+  input.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    handleLogin();
+  });
+});
+
 function enforceLogin() {
   const token = getToken();
   if (!token) {
@@ -790,22 +913,92 @@ if (logoutButton) {
 }
 
 async function loadConfig() {
-  if (!configArea || !getToken()) return;
+  if (!configForm || !getToken()) return;
   try {
+    syncConfigForm(DEFAULT_CONFIG);
     const response = await authFetch(`${API_BASE}/config`);
     if (!response.ok) return;
-    const data = await response.json();
-    configArea.value = JSON.stringify(data, null, 2);
+    const data = mergeConfig(await response.json());
+    currentConfig = data;
+    syncConfigForm(data);
+    syncPresumedProfitRateInput(data);
   } catch (error) {
+    currentConfig = mergeConfig(currentConfig || DEFAULT_CONFIG);
+    syncConfigForm(currentConfig);
     statusError.textContent = "Faça login para acessar os parâmetros.";
     statusError.classList.remove("hidden");
   }
 }
 
+function syncPresumedProfitRateInput(config) {
+  const regime = config?.pj?.presumed_profit_regime === "hospital" ? "hospital" : "standard";
+  setCheckboxGroup(regime);
+}
+
+function syncConfigForm(config) {
+  if (!configForm) return;
+  const mergedConfig = mergeConfig(config);
+  currentConfig = mergedConfig;
+  configVersionInput.value = mergedConfig.version || "";
+  configPfIrpfFlatInput.value = percentInputValue(mergedConfig.pf.irpf_flat);
+  configPfInssPfRateInput.value = percentInputValue(mergedConfig.pf.inss_pf_rate);
+  configPfProlaboreInssRateInput.value = percentInputValue(mergedConfig.pf.prolabore_inss_rate);
+
+  const regime = mergedConfig.pj.presumed_profit_regime === "hospital" ? "hospital" : "standard";
+  configRegimeStandard.checked = regime === "standard";
+  configRegimeHospital.checked = regime === "hospital";
+
+  configPjStandardIrpjPresumedRateInput.value = percentInputValue(mergedConfig.pj.standard_irpj_presumed_rate);
+  configPjStandardCsllPresumedRateInput.value = percentInputValue(mergedConfig.pj.standard_csll_presumed_rate);
+  configPjHospitalPresumedRateInput.value = percentInputValue(mergedConfig.pj.hospital_presumed_rate);
+  configPjIrpjRateInput.value = percentInputValue(mergedConfig.pj.irpj_rate);
+  configPjIrpjAdditionalRateInput.value = percentInputValue(mergedConfig.pj.irpj_additional_rate);
+  configPjIrpjAdditionalThresholdInput.value = String(mergedConfig.pj.irpj_additional_threshold ?? 0);
+  configPjCsllRateInput.value = percentInputValue(mergedConfig.pj.csll_rate);
+  configPjPisRateInput.value = percentInputValue(mergedConfig.pj.pis_rate);
+  configPjCofinsRateInput.value = percentInputValue(mergedConfig.pj.cofins_rate);
+  configPjCbsRateInput.value = percentInputValue(mergedConfig.pj.cbs_rate);
+  configPjIbsRateInput.value = percentInputValue(mergedConfig.pj.ibs_rate);
+  configPjInssFolhaRateInput.value = percentInputValue(mergedConfig.pj.inss_folha_rate);
+  configPjCbsEnabledInput.checked = Boolean(mergedConfig.pj.cbs_enabled);
+  configPjIbsEnabledInput.checked = Boolean(mergedConfig.pj.ibs_enabled);
+  configPjDoubleExpenseInput.checked = Boolean(mergedConfig.pj.double_expense_in_pj);
+}
+
+function buildConfigFromForm() {
+  const regime = configRegimeHospital?.checked ? "hospital" : "standard";
+  return {
+    version: configVersionInput.value.trim(),
+    pf: {
+      irpf_flat: parseNumberInput(configPfIrpfFlatInput, "IRPF", { percent: true }),
+      inss_pf_rate: parseNumberInput(configPfInssPfRateInput, "INSS PF", { percent: true }),
+      prolabore_inss_rate: parseNumberInput(configPfProlaboreInssRateInput, "INSS pró-labore", { percent: true }),
+    },
+    pj: {
+      presumed_profit_regime: regime,
+      standard_irpj_presumed_rate: parseNumberInput(configPjStandardIrpjPresumedRateInput, "Base IRPJ padrão", { percent: true }),
+      standard_csll_presumed_rate: parseNumberInput(configPjStandardCsllPresumedRateInput, "Base CSLL padrão", { percent: true }),
+      hospital_presumed_rate: parseNumberInput(configPjHospitalPresumedRateInput, "Base hospitalar", { percent: true }),
+      irpj_rate: parseNumberInput(configPjIrpjRateInput, "Alíquota IRPJ", { percent: true }),
+      irpj_additional_rate: parseNumberInput(configPjIrpjAdditionalRateInput, "Adicional IRPJ", { percent: true }),
+      irpj_additional_threshold: parseNumberInput(configPjIrpjAdditionalThresholdInput, "Limite adicional IRPJ"),
+      csll_rate: parseNumberInput(configPjCsllRateInput, "Alíquota CSLL", { percent: true }),
+      pis_rate: parseNumberInput(configPjPisRateInput, "PIS", { percent: true }),
+      cofins_rate: parseNumberInput(configPjCofinsRateInput, "COFINS", { percent: true }),
+      cbs_rate: parseNumberInput(configPjCbsRateInput, "CBS", { percent: true }),
+      ibs_rate: parseNumberInput(configPjIbsRateInput, "IBS", { percent: true }),
+      inss_folha_rate: parseNumberInput(configPjInssFolhaRateInput, "INSS folha", { percent: true }),
+      cbs_enabled: Boolean(configPjCbsEnabledInput.checked),
+      ibs_enabled: Boolean(configPjIbsEnabledInput.checked),
+      double_expense_in_pj: Boolean(configPjDoubleExpenseInput.checked),
+    },
+  };
+}
+
 async function saveConfig() {
-  if (!configArea || !getToken()) return;
+  if (!configForm || !getToken()) return;
   try {
-    const parsed = JSON.parse(configArea.value);
+    const parsed = buildConfigFromForm();
     const response = await authFetch(`${API_BASE}/config`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -814,9 +1007,49 @@ async function saveConfig() {
     if (!response.ok) {
       throw new Error("Falha ao salvar");
     }
+    currentConfig = mergeConfig(parsed);
+    syncConfigForm(currentConfig);
+    syncPresumedProfitRateInput(currentConfig);
+    statusError.classList.add("hidden");
     statusIndicator.textContent = "Parâmetros salvos";
+    calculate();
   } catch (error) {
-    statusError.textContent = "JSON inválido ou erro ao salvar parâmetros.";
+    statusError.textContent = error.message || "Erro ao salvar parâmetros.";
+    statusError.classList.remove("hidden");
+  }
+}
+
+async function persistPresumedProfitRate() {
+  if (!getToken()) return;
+
+  const regime = presumedRegimeHospital?.checked ? "hospital" : presumedRegimeStandard?.checked ? "standard" : null;
+  if (!regime) {
+    setError("presumed_profit_regime", "Selecione um regime");
+    return;
+  }
+
+  setError("presumed_profit_regime", "");
+  const nextConfig = JSON.parse(JSON.stringify(currentConfig || {}));
+  nextConfig.pj = nextConfig.pj || {};
+  nextConfig.pj.presumed_profit_regime = regime;
+  Object.assign(nextConfig.pj, PRESUMED_REGIMES[regime]);
+
+  try {
+    const response = await authFetch(`${API_BASE}/config`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(nextConfig),
+    });
+    if (!response.ok) {
+      throw new Error("Falha ao salvar");
+    }
+    currentConfig = mergeConfig(nextConfig);
+    syncConfigForm(currentConfig);
+    syncPresumedProfitRateInput(currentConfig);
+    statusIndicator.textContent = "Parâmetros salvos";
+    calculate();
+  } catch (error) {
+    statusError.textContent = "Não foi possível salvar o regime de presunção.";
     statusError.classList.remove("hidden");
   }
 }
@@ -828,6 +1061,53 @@ if (configRefresh) {
 if (configSave) {
   configSave.addEventListener("click", saveConfig);
 }
+
+if (configLockInput) {
+  configLockInput.addEventListener("change", () => {
+    setConfigLocked(configLockInput.checked);
+  });
+}
+
+function schedulePresumedProfitSave() {
+  clearTimeout(configSaveTimer);
+  configSaveTimer = setTimeout(() => {
+    persistPresumedProfitRate();
+  }, 400);
+}
+
+if (presumedRegimeStandard) {
+  presumedRegimeStandard.addEventListener("change", () => {
+    if (!presumedRegimeStandard.checked) {
+      presumedRegimeStandard.checked = true;
+    }
+    if (presumedRegimeHospital) {
+      presumedRegimeHospital.checked = false;
+    }
+    setCheckboxGroup("standard");
+    schedulePresumedProfitSave();
+  });
+}
+
+if (presumedRegimeHospital) {
+  presumedRegimeHospital.addEventListener("change", () => {
+    if (!presumedRegimeHospital.checked) {
+      presumedRegimeHospital.checked = true;
+    }
+    if (presumedRegimeStandard) {
+      presumedRegimeStandard.checked = false;
+    }
+    setCheckboxGroup("hospital");
+    schedulePresumedProfitSave();
+  });
+}
+
+if (!presumedRegimeStandard?.checked && !presumedRegimeHospital?.checked) {
+  setCheckboxGroup("standard");
+}
+
+currentConfig = mergeConfig(DEFAULT_CONFIG);
+syncConfigForm(currentConfig);
+setConfigLocked(true);
 
 window.addEventListener("resize", () => {
   if (window.innerWidth > 900) {

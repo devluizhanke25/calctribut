@@ -9,6 +9,7 @@
         "includeFiles": [
           "templates/**",
           "static/**",
+          "frontend/**",
           "public/**",
           "backend/**",
           "data/**"

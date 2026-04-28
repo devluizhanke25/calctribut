@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Estimativas PF x PJ Brasil Salomão</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
   <div class="ambient"></div>
@@ -12,7 +12,7 @@
     <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
     <aside class="sidebar" id="sidebar">
       <div class="brand">
-        <img src="img/logo.png" alt="Brasil Salomão" class="brand-logo" />
+        <img src="./img/logo.png" alt="Brasil Salomão" class="brand-logo" />
         <span class="brand-pill">Brasil Salomão</span>
         <h1>Estimativas PF x PJ</h1>
         <p>Simulador Financeiro-Tributário</p>
@@ -20,9 +20,7 @@
       </div>
       <nav class="side-nav" role="tablist">
         <button class="tab active" data-tab="premissas" role="tab" aria-selected="true">Premissas</button>
-        <button class="tab" data-tab="pf" role="tab" aria-selected="false">Pessoa Física</button>
-        <button class="tab" data-tab="pj" role="tab" aria-selected="false">Pessoa Jurídica</button>
-        <button class="tab" data-tab="comparativo" role="tab" aria-selected="false">Comparativo Final</button>
+        <button class="tab" data-tab="comparacao" role="tab" aria-selected="false">Comparação PF x PJ</button>
         <button class="tab" data-tab="historico" role="tab" aria-selected="false">Histórico</button>
         <button class="tab" data-tab="analise" role="tab" aria-selected="false">Análise</button>
         <button class="tab" data-tab="parametros" role="tab" aria-selected="false">Parâmetros</button>
@@ -49,7 +47,7 @@
         <div class="card form-card">
           <div class="card-header">
             <h2>Entradas financeiras</h2>
-            <button id="reset" class="ghost">Resetar simulação</button>
+            <button id="reset" type="button" class="ghost">Resetar simulação</button>
           </div>
 
           <!-- Heurística: prevenção de erros com validação imediata e feedback visual -->
@@ -70,11 +68,6 @@
                 <span class="help" data-tip="Empresa responsável pela simulação.">?</span>
               </div>
               <small class="error" id="nome_empresa_error"></small>
-            </div>
-
-            <div class="actions">
-              <button id="save-session" class="primary">Salvar simulação</button>
-              <p class="muted">Salva o JSON da análise atual.</p>
             </div>
 
             <div class="field">
@@ -111,6 +104,22 @@
                 <span class="help" data-tip="Parâmetro de referência. Na planilha, impacta INSS e pró-labore.">?</span>
               </div>
               <small class="error" id="salario_minimo_error"></small>
+            </div>
+
+            <div class="field">
+              <label>Regime de presunção do lucro</label>
+              <div class="regime-selector">
+                <label class="regime-option" for="presumed_regime_standard">
+                  <input id="presumed_regime_standard" type="checkbox" />
+                  <span>Regime padrão (8% para IRPJ e 12% para CSLL)</span>
+                </label>
+                <label class="regime-option" for="presumed_regime_hospital">
+                  <input id="presumed_regime_hospital" type="checkbox" />
+                  <span>Regime hospitalar (32% para ambos)</span>
+                </label>
+              </div>
+              <small class="error" id="presumed_profit_regime_error"></small>
+              <p class="muted">O sistema aplica automaticamente as alíquotas do regime selecionado.</p>
             </div>
 
             <div class="divider"></div>
@@ -151,6 +160,11 @@
               </div>
               <small class="error" id="outras_despesas_error"></small>
             </div>
+
+            <div class="actions form-actions-bottom">
+              <button id="save-session" type="button" class="primary">Salvar simulação</button>
+              <p class="muted">Salva uma nova sessão com os dados atuais sem limpar o formulário.</p>
+            </div>
           </form>
         </div>
 
@@ -171,111 +185,27 @@
               <strong id="resumo-prolabore">R$ 0,00</strong>
             </div>
           </div>
-          <div class="notice">
-            <p><strong>Assunção:</strong> Lucro Presumido padrão para serviços (presunção 32%).</p>
-          </div>
         </div>
       </div>
     </section>
 
-    <section class="panel" id="pf" role="tabpanel">
+    <section class="panel" id="comparacao" role="tabpanel">
       <div class="panel-header">
-        <h2>Pessoa Física</h2>
-        <p class="muted">Cálculo anual com INSS e IRPF mensais.</p>
+        <h2>Comparação PF x PJ</h2>
+        <p class="muted">Dashboard comparativo com leitura executiva e detalhamento lado a lado.</p>
       </div>
-      <div class="cards">
-        <div class="card metric">
-          <span class="label">Rendimento anual</span>
-          <strong id="pf-rendimento">R$ 0,00</strong>
-        </div>
-        <div class="card metric">
-          <span class="label">INSS anual</span>
-          <strong id="pf-inss">R$ 0,00</strong>
-        </div>
-        <div class="card metric">
-          <span class="label">IRPF anual</span>
-          <strong id="pf-irpf">R$ 0,00</strong>
-        </div>
-        <div class="card metric highlight">
-          <span class="label">Total de tributos</span>
-          <strong id="pf-total-tributos">R$ 0,00</strong>
-        </div>
-        <div class="card metric highlight">
-          <span class="label">Alíquota efetiva</span>
-          <strong id="pf-aliquota">0%</strong>
-        </div>
-        <div class="card metric">
-          <span class="label">Receita líquida</span>
-          <strong id="pf-receita">R$ 0,00</strong>
-        </div>
-      </div>
-    </section>
 
-    <section class="panel" id="pj" role="tabpanel">
-      <div class="panel-header">
-        <h2>Pessoa Jurídica (Lucro Presumido)</h2>
-        <p class="muted">Tributos sobre faturamento + impacto do pró-labore.</p>
-      </div>
-      <div class="cards">
-        <div class="card metric">
-          <span class="label">IRPJ</span>
-          <strong id="pj-irpj">R$ 0,00</strong>
-        </div>
-        <div class="card metric">
-          <span class="label">CSLL</span>
-          <strong id="pj-csll">R$ 0,00</strong>
-        </div>
-        <div class="card metric">
-          <span class="label">PIS</span>
-          <strong id="pj-pis">R$ 0,00</strong>
-        </div>
-        <div class="card metric">
-          <span class="label">COFINS</span>
-          <strong id="pj-cofins">R$ 0,00</strong>
-        </div>
-        <div class="card metric">
-          <span class="label">ISS</span>
-          <strong id="pj-iss">R$ 0,00</strong>
-        </div>
+      <div class="cards compare-summary-grid">
         <div class="card metric highlight">
-          <span class="label">Total de impostos</span>
-          <strong id="pj-total-impostos">R$ 0,00</strong>
-        </div>
-        <div class="card metric">
-          <span class="label">Lucro líquido</span>
-          <strong id="pj-lucro">R$ 0,00</strong>
-        </div>
-        <div class="card metric">
-          <span class="label">Dividendos estimados</span>
-          <strong id="pj-dividendos">R$ 0,00</strong>
-        </div>
-        <div class="card metric highlight">
-          <span class="label">Impacto PF (pró-labore)</span>
-          <strong id="pj-impacto-pf">R$ 0,00</strong>
-        </div>
-        <div class="card metric highlight">
-          <span class="label">Alíquota efetiva final</span>
-          <strong id="pj-aliquota-final">0%</strong>
-        </div>
-      </div>
-    </section>
-
-    <section class="panel" id="comparativo" role="tabpanel">
-      <div class="panel-header">
-        <h2>Comparativo Final</h2>
-        <p class="muted">Visão executiva para decisão tributária.</p>
-      </div>
-      <div class="cards">
-        <div class="card metric highlight">
-          <span class="label">Economia tributária estimada</span>
+          <span class="label">Economia tributária</span>
           <strong id="comp-economia">R$ 0,00</strong>
         </div>
         <div class="card metric">
-          <span class="label">Alíquota efetiva PF</span>
+          <span class="label">Alíquota PF</span>
           <strong id="comp-aliquota-pf">0%</strong>
         </div>
         <div class="card metric">
-          <span class="label">Alíquota efetiva PJ + PF</span>
+          <span class="label">Alíquota PJ + PF</span>
           <strong id="comp-aliquota-pj">0%</strong>
         </div>
         <div class="card metric">
@@ -288,54 +218,163 @@
         </div>
       </div>
 
-      <div class="card chart-card">
-        <h3>Comparação visual</h3>
-        <div class="bar-chart">
+      <div class="card compare-table-card">
+        <div class="compare-table-header">
           <div>
-            <span>PF</span>
-            <div class="bar" id="bar-pf"><span></span></div>
+            <h3>Tabela comparativa</h3>
+            <p class="muted">Leitura item a item entre os dois modelos.</p>
           </div>
-          <div>
-            <span>PJ + PF</span>
-            <div class="bar" id="bar-pj"><span></span></div>
+        </div>
+        <div class="table-wrap">
+          <table class="compare-table">
+            <colgroup>
+              <col class="compare-col-item" />
+              <col class="compare-col-pf" />
+              <col class="compare-col-pj" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Item comparado</th>
+                <th>Pessoa Física</th>
+                <th>Pessoa Jurídica</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Rendimento anual</td>
+                <td><strong id="cmp-pf-rendimento">R$ 0,00</strong></td>
+                <td class="compare-empty">Base do cálculo por faturamento anual.</td>
+              </tr>
+              <tr>
+                <td>INSS anual</td>
+                <td><strong id="cmp-pf-inss">R$ 0,00</strong></td>
+                <td class="compare-empty">Incluído no impacto do pró-labore.</td>
+              </tr>
+              <tr>
+                <td>IRPF anual</td>
+                <td><strong id="cmp-pf-irpf">R$ 0,00</strong></td>
+                <td class="compare-empty">Incluído no impacto do pró-labore.</td>
+              </tr>
+              <tr>
+                <td>IRPJ</td>
+                <td class="compare-empty">Não se aplica.</td>
+                <td><strong id="cmp-pj-irpj">R$ 0,00</strong></td>
+              </tr>
+              <tr>
+                <td>CSLL</td>
+                <td class="compare-empty">Não se aplica.</td>
+                <td><strong id="cmp-pj-csll">R$ 0,00</strong></td>
+              </tr>
+              <tr>
+                <td>PIS</td>
+                <td class="compare-empty">Não se aplica.</td>
+                <td><strong id="cmp-pj-pis">R$ 0,00</strong></td>
+              </tr>
+              <tr>
+                <td>COFINS</td>
+                <td class="compare-empty">Não se aplica.</td>
+                <td><strong id="cmp-pj-cofins">R$ 0,00</strong></td>
+              </tr>
+              <tr>
+                <td>ISS</td>
+                <td class="compare-empty">Não se aplica.</td>
+                <td><strong id="cmp-pj-iss">R$ 0,00</strong></td>
+              </tr>
+              <tr>
+                <td>Total de tributos / impostos</td>
+                <td><strong id="cmp-pf-total-tributos">R$ 0,00</strong></td>
+                <td><strong id="cmp-pj-total-impostos">R$ 0,00</strong></td>
+              </tr>
+              <tr>
+                <td>Impacto PF do pró-labore</td>
+                <td class="compare-empty">Já refletido no cálculo PF.</td>
+                <td><strong id="cmp-pj-impacto-pf">R$ 0,00</strong></td>
+              </tr>
+              <tr>
+                <td>Alíquota efetiva</td>
+                <td><strong id="cmp-pf-aliquota">0%</strong></td>
+                <td><strong id="cmp-pj-aliquota-final">0%</strong></td>
+              </tr>
+              <tr>
+                <td>Resultado líquido</td>
+                <td><strong id="cmp-pf-receita">R$ 0,00</strong></td>
+                <td><strong id="cmp-pj-lucro">R$ 0,00</strong></td>
+              </tr>
+              <tr>
+                <td>Dividendos estimados</td>
+                <td class="compare-empty">Não se aplica.</td>
+                <td><strong id="cmp-pj-dividendos">R$ 0,00</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="compare-charts-stack">
+        <div class="card chart-card compare-chart-full">
+          <h3>Comparação visual</h3>
+          <div class="bar-chart">
+            <div>
+              <span>PF</span>
+              <div class="bar" id="bar-pf"><span></span></div>
+            </div>
+            <div>
+              <span>PJ + PF</span>
+              <div class="bar" id="bar-pj"><span></span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="compare-dashboard compare-dashboard-bottom">
+          <div class="card chart-card">
+            <h3>Impostos por modelo</h3>
+            <div class="bar-chart">
+              <div>
+                <span>Total tributos PF</span>
+                <div class="bar" id="bar-tributos-pf"><span></span></div>
+              </div>
+              <div>
+                <span>Impostos PJ</span>
+                <div class="bar" id="bar-impostos-pj"><span></span></div>
+              </div>
+              <div>
+                <span>Impacto PF (pró-labore)</span>
+                <div class="bar" id="bar-impacto-pf"><span></span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card chart-card">
+            <h3>Distribuição de tributos</h3>
+            <div class="pie-wrap">
+              <div class="pie" id="pie-pj"></div>
+              <div class="pie-legend">
+                <div><span class="dot dot-a"></span>Impostos PJ</div>
+                <div><span class="dot dot-b"></span>Impacto PF</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="card chart-card">
-        <h3>Impostos por modelo</h3>
-        <div class="bar-chart">
-          <div>
-            <span>Total tributos PF</span>
-            <div class="bar" id="bar-tributos-pf"><span></span></div>
-          </div>
-          <div>
-            <span>Impostos PJ</span>
-            <div class="bar" id="bar-impostos-pj"><span></span></div>
-          </div>
-          <div>
-            <span>Impacto PF (pró-labore)</span>
-            <div class="bar" id="bar-impacto-pf"><span></span></div>
-          </div>
-        </div>
+      <div class="compare-hidden-outputs" aria-hidden="true">
+        <strong id="pf-rendimento"></strong>
+        <strong id="pf-inss"></strong>
+        <strong id="pf-irpf"></strong>
+        <strong id="pf-total-tributos"></strong>
+        <strong id="pf-aliquota"></strong>
+        <strong id="pf-receita"></strong>
+        <strong id="pj-irpj"></strong>
+        <strong id="pj-csll"></strong>
+        <strong id="pj-pis"></strong>
+        <strong id="pj-cofins"></strong>
+        <strong id="pj-iss"></strong>
+        <strong id="pj-total-impostos"></strong>
+        <strong id="pj-lucro"></strong>
+        <strong id="pj-dividendos"></strong>
+        <strong id="pj-impacto-pf"></strong>
+        <strong id="pj-aliquota-final"></strong>
       </div>
-
-      <div class="card chart-card">
-        <h3>Distribuição de tributos (PJ + PF)</h3>
-        <div class="pie-wrap">
-          <div class="pie" id="pie-pj"></div>
-          <div class="pie-legend">
-            <div><span class="dot dot-a"></span>Impostos PJ</div>
-            <div><span class="dot dot-b"></span>Impacto PF</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card chart-card">
-        <h3>Parecer do resultado</h3>
-        <p id="parecer-texto" class="muted"></p>
-      </div>
-
     </section>
 
     <section class="panel" id="historico" role="tabpanel">
@@ -385,10 +424,131 @@
     <section class="panel" id="parametros" role="tabpanel">
       <div class="panel-header">
         <h2>Parâmetros tributários</h2>
-        <p class="muted">Edite as regras em JSON e salve.</p>
+        <p class="muted">Edite as regras no formulário e salve. O JSON é atualizado internamente.</p>
       </div>
       <div class="card">
-        <textarea id="config-json" class="config-area" rows="18"></textarea>
+        <div class="config-toolbar">
+          <label class="toggle-option" for="config-lock">
+            <input id="config-lock" type="checkbox" checked />
+            <span>Bloquear edição dos parâmetros</span>
+          </label>
+          <p class="muted">Desmarque para liberar alterações.</p>
+        </div>
+        <form id="config-form" class="config-form" novalidate>
+          <div class="config-grid">
+            <section class="config-section">
+              <h3>Configuração geral</h3>
+              <div class="field">
+                <label for="config-version">Versão das regras</label>
+                <input id="config-version" type="text" />
+              </div>
+            </section>
+
+            <section class="config-section">
+              <h3>Pessoa Física</h3>
+              <div class="field">
+                <label for="config-pf-irpf-flat">IRPF alíquota fixa (%)</label>
+                <input id="config-pf-irpf-flat" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+              </div>
+              <div class="field">
+                <label for="config-pf-inss-pf-rate">INSS PF (%)</label>
+                <input id="config-pf-inss-pf-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+              </div>
+              <div class="field">
+                <label for="config-pf-prolabore-inss-rate">INSS pró-labore (%)</label>
+                <input id="config-pf-prolabore-inss-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+              </div>
+            </section>
+
+            <section class="config-section">
+              <h3>Regime de presunção</h3>
+              <div class="regime-selector config-regime-selector">
+                <label class="regime-option" for="config-regime-standard">
+                  <input id="config-regime-standard" name="config-regime" type="radio" />
+                  <span>Regime padrão</span>
+                </label>
+                <label class="regime-option" for="config-regime-hospital">
+                  <input id="config-regime-hospital" name="config-regime" type="radio" />
+                  <span>Regime hospitalar</span>
+                </label>
+              </div>
+              <div class="config-inline-grid">
+                <div class="field">
+                  <label for="config-pj-standard-irpj-presumed-rate">Base presumida IRPJ padrão (%)</label>
+                  <input id="config-pj-standard-irpj-presumed-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+                </div>
+                <div class="field">
+                  <label for="config-pj-standard-csll-presumed-rate">Base presumida CSLL padrão (%)</label>
+                  <input id="config-pj-standard-csll-presumed-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+                </div>
+                <div class="field">
+                  <label for="config-pj-hospital-presumed-rate">Base presumida hospitalar (%)</label>
+                  <input id="config-pj-hospital-presumed-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+                </div>
+              </div>
+            </section>
+
+            <section class="config-section">
+              <h3>Pessoa Jurídica</h3>
+              <div class="config-inline-grid">
+                <div class="field">
+                  <label for="config-pj-irpj-rate">Alíquota IRPJ (%)</label>
+                  <input id="config-pj-irpj-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+                </div>
+                <div class="field">
+                  <label for="config-pj-irpj-additional-rate">Adicional IRPJ (%)</label>
+                  <input id="config-pj-irpj-additional-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+                </div>
+                <div class="field">
+                  <label for="config-pj-irpj-additional-threshold">Limite adicional IRPJ (R$)</label>
+                  <input id="config-pj-irpj-additional-threshold" type="number" min="0" step="0.01" inputmode="decimal" />
+                </div>
+                <div class="field">
+                  <label for="config-pj-csll-rate">Alíquota CSLL (%)</label>
+                  <input id="config-pj-csll-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+                </div>
+                <div class="field">
+                  <label for="config-pj-pis-rate">PIS (%)</label>
+                  <input id="config-pj-pis-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+                </div>
+                <div class="field">
+                  <label for="config-pj-cofins-rate">COFINS (%)</label>
+                  <input id="config-pj-cofins-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+                </div>
+                <div class="field">
+                  <label for="config-pj-cbs-rate">CBS (%)</label>
+                  <input id="config-pj-cbs-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+                </div>
+                <div class="field">
+                  <label for="config-pj-ibs-rate">IBS (%)</label>
+                  <input id="config-pj-ibs-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+                </div>
+                <div class="field">
+                  <label for="config-pj-inss-folha-rate">INSS folha (%)</label>
+                  <input id="config-pj-inss-folha-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
+                </div>
+              </div>
+            </section>
+
+            <section class="config-section">
+              <h3>Recursos ativos</h3>
+              <div class="config-toggle-grid">
+                <label class="toggle-option" for="config-pj-cbs-enabled">
+                  <input id="config-pj-cbs-enabled" type="checkbox" />
+                  <span>Habilitar CBS</span>
+                </label>
+                <label class="toggle-option" for="config-pj-ibs-enabled">
+                  <input id="config-pj-ibs-enabled" type="checkbox" />
+                  <span>Habilitar IBS</span>
+                </label>
+                <label class="toggle-option" for="config-pj-double-expense-in-pj">
+                  <input id="config-pj-double-expense-in-pj" type="checkbox" />
+                  <span>Duplicar despesas no cálculo PJ</span>
+                </label>
+              </div>
+            </section>
+          </div>
+        </form>
         <div class="actions">
           <button id="config-refresh" class="ghost">Recarregar</button>
           <button id="config-save" class="primary">Salvar parâmetros</button>
@@ -471,8 +631,11 @@
   <section id="print-area" class="print-area">
     <header class="print-header">
       <div class="print-brand">
-        <img src="img/logo.png" alt="Brasil Salomão" class="print-logo" />
-        <h1>Simulador PF x PJ</h1>
+        <img src="./img/logo.png" alt="Brasil Salomão" class="print-logo" />
+        <div class="print-brand-copy">
+          <h1>Simulador PF x PJ</h1>
+          <p>Comparativo financeiro-tributário</p>
+        </div>
       </div>
       <div class="print-meta">
         <div><strong>Cliente:</strong> <span id="print-cliente">-</span></div>
@@ -482,75 +645,100 @@
     </header>
 
     <div class="print-section">
-      <h2>Premissas</h2>
-      <div class="print-grid">
-        <div><span>Rendimento mensal</span><strong id="print-rendimento">R$ 0,00</strong></div>
-        <div><span>Pró-labore mensal</span><strong id="print-prolabore">R$ 0,00</strong></div>
-        <div><span>ISS fixo anual</span><strong id="print-iss">R$ 0,00</strong></div>
-        <div><span>Salário mínimo</span><strong id="print-salario">R$ 0,00</strong></div>
-        <div><span>Despesas anuais</span><strong id="print-despesas">R$ 0,00</strong></div>
-      </div>
+      <h2>Tabela comparativa</h2>
+      <table class="compare-table print-compare-table">
+        <colgroup>
+          <col class="compare-col-item" />
+          <col class="compare-col-pf" />
+          <col class="compare-col-pj" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Item comparado</th>
+            <th>Pessoa Física</th>
+            <th>Pessoa Jurídica</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Rendimento anual</td>
+            <td><strong id="print-cmp-pf-rendimento">R$ 0,00</strong></td>
+            <td id="print-cmp-pj-rendimento">Base do cálculo por faturamento anual.</td>
+          </tr>
+          <tr>
+            <td>INSS anual</td>
+            <td><strong id="print-cmp-pf-inss">R$ 0,00</strong></td>
+            <td id="print-cmp-pj-inss">Incluído no impacto do pró-labore.</td>
+          </tr>
+          <tr>
+            <td>IRPF anual</td>
+            <td><strong id="print-cmp-pf-irpf">R$ 0,00</strong></td>
+            <td id="print-cmp-pj-irpf">Incluído no impacto do pró-labore.</td>
+          </tr>
+          <tr>
+            <td>IRPJ</td>
+            <td>Não se aplica.</td>
+            <td><strong id="print-cmp-pj-irpj">R$ 0,00</strong></td>
+          </tr>
+          <tr>
+            <td>CSLL</td>
+            <td>Não se aplica.</td>
+            <td><strong id="print-cmp-pj-csll">R$ 0,00</strong></td>
+          </tr>
+          <tr>
+            <td>PIS</td>
+            <td>Não se aplica.</td>
+            <td><strong id="print-cmp-pj-pis">R$ 0,00</strong></td>
+          </tr>
+          <tr>
+            <td>COFINS</td>
+            <td>Não se aplica.</td>
+            <td><strong id="print-cmp-pj-cofins">R$ 0,00</strong></td>
+          </tr>
+          <tr>
+            <td>ISS</td>
+            <td>Não se aplica.</td>
+            <td><strong id="print-cmp-pj-iss">R$ 0,00</strong></td>
+          </tr>
+          <tr>
+            <td>Total de tributos / impostos</td>
+            <td><strong id="print-cmp-pf-total-tributos">R$ 0,00</strong></td>
+            <td><strong id="print-cmp-pj-total-impostos">R$ 0,00</strong></td>
+          </tr>
+          <tr>
+            <td>Impacto PF do pró-labore</td>
+            <td>Já refletido no cálculo PF.</td>
+            <td><strong id="print-cmp-pj-impacto-pf">R$ 0,00</strong></td>
+          </tr>
+          <tr>
+            <td>Alíquota efetiva</td>
+            <td><strong id="print-cmp-pf-aliquota">0%</strong></td>
+            <td><strong id="print-cmp-pj-aliquota-final">0%</strong></td>
+          </tr>
+          <tr>
+            <td>Resultado líquido</td>
+            <td><strong id="print-cmp-pf-receita">R$ 0,00</strong></td>
+            <td><strong id="print-cmp-pj-lucro">R$ 0,00</strong></td>
+          </tr>
+          <tr>
+            <td>Dividendos estimados</td>
+            <td>Não se aplica.</td>
+            <td><strong id="print-cmp-pj-dividendos">R$ 0,00</strong></td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
-    <div class="print-section">
-      <h2>Pessoa Física</h2>
-      <div class="print-grid">
-        <div><span>Rendimento anual</span><strong id="print-pf-rendimento">R$ 0,00</strong></div>
-        <div><span>INSS</span><strong id="print-pf-inss">R$ 0,00</strong></div>
-        <div><span>IRPF</span><strong id="print-pf-irpf">R$ 0,00</strong></div>
-        <div><span>Total tributos</span><strong id="print-pf-total">R$ 0,00</strong></div>
-        <div><span>Alíquota efetiva</span><strong id="print-pf-aliquota">0%</strong></div>
-        <div><span>Receita líquida</span><strong id="print-pf-receita">R$ 0,00</strong></div>
-      </div>
-    </div>
-
-    <div class="print-section">
-      <h2>Pessoa Jurídica</h2>
-      <div class="print-grid">
-        <div><span>IRPJ (total)</span><strong id="print-pj-irpj">R$ 0,00</strong></div>
-        <div><span>CSLL</span><strong id="print-pj-csll">R$ 0,00</strong></div>
-        <div><span>PIS</span><strong id="print-pj-pis">R$ 0,00</strong></div>
-        <div><span>COFINS</span><strong id="print-pj-cofins">R$ 0,00</strong></div>
-        <div><span>ISS</span><strong id="print-pj-iss">R$ 0,00</strong></div>
-        <div><span>Total impostos</span><strong id="print-pj-total">R$ 0,00</strong></div>
-        <div><span>Lucro líquido</span><strong id="print-pj-lucro">R$ 0,00</strong></div>
-        <div><span>Dividendos</span><strong id="print-pj-dividendos">R$ 0,00</strong></div>
-        <div><span>Impacto PF</span><strong id="print-pj-impacto">R$ 0,00</strong></div>
-        <div><span>Alíquota final</span><strong id="print-pj-aliquota">0%</strong></div>
-      </div>
-    </div>
-
-    <div class="print-section">
-      <h2>Comparativo Final</h2>
-      <div class="print-grid">
-        <div><span>Economia tributária</span><strong id="print-comp-economia">R$ 0,00</strong></div>
-        <div><span>Alíquota PF</span><strong id="print-comp-aliquota-pf">0%</strong></div>
-        <div><span>Alíquota PJ + PF</span><strong id="print-comp-aliquota-pj">0%</strong></div>
-        <div><span>Receita líquida PF</span><strong id="print-comp-receita-pf">R$ 0,00</strong></div>
-        <div><span>Lucro líquido PJ</span><strong id="print-comp-lucro-pj">R$ 0,00</strong></div>
-      </div>
-    </div>
-
-    <div class="print-section">
-      <h2>Análises adicionais</h2>
-      <div class="print-grid">
-        <div><span>Tributos PF</span><strong id="print-analise-tributos-pf">R$ 0,00</strong></div>
-        <div><span>Impostos PJ</span><strong id="print-analise-impostos-pj">R$ 0,00</strong></div>
-        <div><span>Impacto PF</span><strong id="print-analise-impacto-pf">R$ 0,00</strong></div>
-      </div>
-    </div>
-
-    <div class="print-section">
-      <h2>Parecer final</h2>
-      <p id="print-parecer" class="muted"></p>
-    </div>
+    <footer class="print-footer">
+      <span>www.brasilsalomao.com.br</span>
+    </footer>
   </section>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <div id="login-overlay" class="login-overlay">
     <div class="login-card">
-      <img src="img/logo.png" alt="Brasil Salomão" class="login-logo" />
-      <h2>Entrar</h2>
+      <img src="./img/logo.png" alt="Brasil Salomão" class="login-logo" />
+      <h2>Calculadora Tributária 1.0</h2>
       <p class="muted">Acesso administrativo necessário para continuar.</p>
       <label for="login-user">Usuário</label>
       <input id="login-user" type="text" />
@@ -561,6 +749,6 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="./app.js"></script>
 </body>
 </html>
