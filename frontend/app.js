@@ -30,6 +30,7 @@ const loginOverlay = document.getElementById("login-overlay");
 const loginButton = document.getElementById("login-btn");
 const loginUser = document.getElementById("login-user");
 const loginPass = document.getElementById("login-pass");
+const toggleLoginPass = document.getElementById("toggle-login-pass");
 const loginError = document.getElementById("login-error");
 const sidebar = document.getElementById("sidebar");
 const sidebarToggle = document.getElementById("sidebar-toggle");
@@ -459,17 +460,26 @@ function setCheckboxGroup(regime) {
 
 function initTabs() {
   const tabs = document.querySelectorAll(".tab");
-  const panels = document.querySelectorAll(".panel");
-
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
-      tabs.forEach((btn) => btn.classList.remove("active"));
-      panels.forEach((panel) => panel.classList.remove("active"));
-
-      tab.classList.add("active");
-      document.getElementById(tab.dataset.tab).classList.add("active");
+      activateTab(tab.dataset.tab);
     });
   });
+}
+
+function activateTab(tabId) {
+  if (!tabId) return;
+  const tabs = document.querySelectorAll(".tab");
+  const panels = document.querySelectorAll(".panel");
+  tabs.forEach((btn) => btn.classList.remove("active"));
+  panels.forEach((panel) => panel.classList.remove("active"));
+  const targetTab = document.querySelector(`.tab[data-tab="${tabId}"]`);
+  const targetPanel = document.getElementById(tabId);
+  if (targetTab) targetTab.classList.add("active");
+  if (targetPanel) targetPanel.classList.add("active");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  const container = document.querySelector(".container");
+  container?.scrollTo?.({ top: 0, behavior: "smooth" });
 }
 
 inputs.forEach((input) => {
@@ -663,6 +673,7 @@ document.getElementById("save-session").addEventListener("click", async (event) 
   if (isSavingSimulation) return;
   const saveButton = event.currentTarget;
   const saveStartedAt = Date.now();
+  let savedSuccessfully = false;
   try {
     if (!getToken()) {
       loginOverlay.classList.remove("hidden");
@@ -678,9 +689,16 @@ document.getElementById("save-session").addEventListener("click", async (event) 
     statusError.classList.add("hidden");
     statusIndicator.textContent = "Salvando simulação...";
     saveAlert?.classList.remove("hidden");
+    const idempotencyKey =
+      (window.crypto && typeof window.crypto.randomUUID === "function")
+        ? window.crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const response = await authFetch(`${API_BASE}/simulations`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Idempotency-Key": idempotencyKey,
+      },
       body: JSON.stringify({
         nome_cliente: state.nome_cliente,
         nome_empresa: state.nome_empresa,
@@ -697,13 +715,21 @@ document.getElementById("save-session").addEventListener("click", async (event) 
     });
 
     if (!response.ok) {
-      throw new Error("Falha ao salvar");
+      let detail = "Falha ao salvar";
+      try {
+        const body = await response.json();
+        if (body?.detail) detail = body.detail;
+      } catch (_) {
+        // ignora falha de parse e mantém mensagem padrão
+      }
+      throw new Error(detail);
     }
     await loadHistory();
     await loadAnalysis();
     statusIndicator.textContent = "Simulação salva com sucesso";
+    savedSuccessfully = true;
   } catch (error) {
-    statusError.textContent = "Nao foi possivel salvar a simulacao.";
+    statusError.textContent = error?.message || "Nao foi possivel salvar a simulacao.";
     statusError.classList.remove("hidden");
     statusIndicator.textContent = "Falha ao salvar simulação";
   } finally {
@@ -715,6 +741,9 @@ document.getElementById("save-session").addEventListener("click", async (event) 
     saveAlert?.classList.add("hidden");
     if (saveButton) saveButton.disabled = false;
     isSavingSimulation = false;
+    if (savedSuccessfully) {
+      activateTab("comparacao");
+    }
   }
 });
 
@@ -865,6 +894,16 @@ async function handleLogin() {
 
 if (loginButton) {
   loginButton.addEventListener("click", handleLogin);
+}
+
+if (toggleLoginPass && loginPass) {
+  toggleLoginPass.addEventListener("click", () => {
+    const showing = loginPass.type === "text";
+    loginPass.type = showing ? "password" : "text";
+    toggleLoginPass.innerHTML = `<span aria-hidden="true">${showing ? "👁" : "🙈"}</span>`;
+    toggleLoginPass.setAttribute("aria-label", showing ? "Mostrar senha" : "Ocultar senha");
+    toggleLoginPass.setAttribute("aria-pressed", showing ? "false" : "true");
+  });
 }
 
 [loginUser, loginPass].forEach((input) => {

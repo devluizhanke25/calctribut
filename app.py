@@ -29,12 +29,14 @@ if os.getenv("VERCEL") or os.getenv("VERCEL_ENV"):
 else:
     DATA_DIR = BASE_DIR / "data" / "simulacoes"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
+IDEMPOTENCY_DIR = DATA_DIR / "_idempotency"
+IDEMPOTENCY_DIR.mkdir(parents=True, exist_ok=True)
 
 
 @app.after_request
 def add_cors_headers(response: Response) -> Response:
     response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-Auth-Token"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-Auth-Token, X-Idempotency-Key"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
     return response
 
@@ -158,6 +160,85 @@ def _require_kv_if_vercel() -> Optional[tuple[Any, int]]:
 def _slugify(value: str) -> str:
     safe = "".join(ch if ch.isalnum() else "_" for ch in value.strip())
     return "_".join(filter(None, safe.split("_"))).lower() or "empresa"
+
+
+def _stable_json_hash(payload: dict[str, Any]) -> str:
+    serialized = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def _idempotency_file(user: str, idem_key: str) -> Path:
+    user_slug = _slugify(user)
+    key_hash = hashlib.sha256(idem_key.encode("utf-8")).hexdigest()
+    path = IDEMPOTENCY_DIR / user_slug
+    path.mkdir(parents=True, exist_ok=True)
+    return path / f"{key_hash}.txt"
+
+
+def _idempotency_get(user: str, idem_key: str) -> Optional[str]:
+    if not idem_key:
+        return None
+    if _storage_use_kv():
+        return _kv_get(f"idem:{user}:{idem_key}")
+    file_path = _idempotency_file(user, idem_key)
+    if not file_path.exists():
+        return None
+    value = file_path.read_text(encoding="utf-8").strip()
+    return value or None
+
+
+def _idempotency_set(user: str, idem_key: str, sim_id: str) -> None:
+    if not idem_key:
+        return
+    if _storage_use_kv():
+        _kv_set(f"idem:{user}:{idem_key}", sim_id)
+        return
+    file_path = _idempotency_file(user, idem_key)
+    file_path.write_text(sim_id, encoding="utf-8")
+
+
+def _find_duplicate_same_date(parsed: dict[str, Any], target_date: datetime) -> Optional[dict[str, Any]]:
+    candidate_input = {
+        "nome_cliente": (parsed.get("nome_cliente") or "").strip(),
+        "nome_empresa": (parsed.get("nome_empresa") or "").strip(),
+        "rendimento_mensal": parsed.get("rendimento_mensal"),
+        "pro_labore": parsed.get("pro_labore"),
+        "iss_fixo": parsed.get("iss_fixo"),
+        "despesas_anuais": {
+            "secretaria": parsed["annual_expenses"]["secretaria"],
+            "aluguel_condominio": parsed["annual_expenses"]["aluguel_condominio"],
+            "contador": parsed["annual_expenses"]["contador"],
+            "outras_despesas": parsed["annual_expenses"]["outras_despesas"],
+        },
+    }
+    candidate_hash = _stable_json_hash(candidate_input)
+    target_day = target_date.date()
+    for record in _load_records():
+        created_at_raw = record.get("created_at")
+        if not created_at_raw:
+            continue
+        try:
+            created_at = datetime.fromisoformat(created_at_raw)
+        except ValueError:
+            continue
+        if created_at.date() != target_day:
+            continue
+        record_input = record.get("input") or {}
+        if not isinstance(record_input, dict):
+            continue
+        record_hash = _stable_json_hash(
+            {
+                "nome_cliente": (record_input.get("nome_cliente") or "").strip(),
+                "nome_empresa": (record_input.get("nome_empresa") or "").strip(),
+                "rendimento_mensal": record_input.get("rendimento_mensal"),
+                "pro_labore": record_input.get("pro_labore"),
+                "iss_fixo": record_input.get("iss_fixo"),
+                "despesas_anuais": record_input.get("despesas_anuais") or {},
+            }
+        )
+        if record_hash == candidate_hash:
+            return record
+    return None
 
 
 def _load_records() -> list[dict[str, Any]]:
@@ -384,7 +465,8 @@ def calculate() -> Any:
 
 @app.post("/simulations")
 def save_simulation() -> Any:
-    if not _require_auth():
+    auth_user = _require_auth()
+    if not auth_user:
         return _json_error("Nao autorizado", 401)
 
     payload = _get_payload()
@@ -397,7 +479,28 @@ def save_simulation() -> Any:
 
     nome_empresa = (parsed.get("nome_empresa") or "").strip()
     if not nome_empresa:
-        return _json_error("Nome da empresa obrigatório", 400)
+        return _json_error("Nome da empresa obrigatorio", 400)
+
+    idempotency_key = (request.headers.get("X-Idempotency-Key") or "").strip()
+    if idempotency_key:
+        existing_id = _idempotency_get(auth_user, idempotency_key)
+        if existing_id:
+            existing_record = _get_record(existing_id)
+            if existing_record:
+                return jsonify({"id": existing_id, "deduplicated": True})
+
+    duplicate_record = _find_duplicate_same_date(parsed, target_date=datetime.now())
+    if duplicate_record and duplicate_record.get("id"):
+        dedup_id = str(duplicate_record["id"])
+        if idempotency_key:
+            _idempotency_set(auth_user, idempotency_key, dedup_id)
+        return jsonify(
+            {
+                "detail": "Registro ja inserido com os mesmos dados na data de hoje.",
+                "id": dedup_id,
+                "duplicate": True,
+            }
+        ), 409
 
     result = calculate_all(
         monthly_income=parsed["rendimento_mensal"],
@@ -430,7 +533,10 @@ def save_simulation() -> Any:
         "output": result,
     }
     _save_record(record)
+    if idempotency_key:
+        _idempotency_set(auth_user, idempotency_key, record["id"])
     return jsonify({"id": record["id"]})
+
 
 
 @app.get("/simulations")

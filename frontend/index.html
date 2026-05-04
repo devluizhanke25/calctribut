@@ -731,7 +731,12 @@
       <label for="login-user">Usuário</label>
       <input id="login-user" type="text" />
       <label for="login-pass">Senha</label>
-      <input id="login-pass" type="password" />
+      <div class="password-field">
+        <input id="login-pass" type="password" />
+        <button id="toggle-login-pass" class="password-toggle" type="button" aria-label="Mostrar senha" aria-pressed="false">
+          <span aria-hidden="true">👁</span>
+        </button>
+      </div>
       <button id="login-btn" class="primary">Entrar</button>
       <small id="login-error" class="error"></small>
     </div>

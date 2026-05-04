@@ -578,6 +578,32 @@ body {
   width: 100%;
 }
 
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-right: 88px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 1px solid #323232;
+  background: #191919;
+  color: #d7d7d7;
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.password-toggle:hover {
+  background: #232323;
+}
+
 .card-header {
   display: flex;
   align-items: center;

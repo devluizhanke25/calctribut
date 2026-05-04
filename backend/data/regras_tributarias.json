@@ -6,7 +6,7 @@
     "prolabore_inss_rate": 0.11
   },
   "pj": {
-    "presumed_profit_regime": "standard",
+    "presumed_profit_regime": "hospital",
     "standard_irpj_presumed_rate": 0.08,
     "standard_csll_presumed_rate": 0.12,
     "hospital_presumed_rate": 0.32,

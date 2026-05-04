@@ -1,0 +1,62 @@
+{
+  "id": "hanke_digital_new/2026-05-04_023842",
+  "created_at": "2026-05-04T02:38:42.585662",
+  "nome_cliente": "Luiz Fernando Nunes",
+  "nome_empresa": "Hanke Digital New",
+  "input": {
+    "nome_cliente": "Luiz Fernando Nunes",
+    "nome_empresa": "Hanke Digital New",
+    "rendimento_mensal": 120000.0,
+    "despesas_anuais": {
+      "secretaria": 24000.0,
+      "aluguel_condominio": 24000.0,
+      "contador": 12000.0,
+      "outras_despesas": 0.0
+    },
+    "pro_labore": 12000.0,
+    "iss_fixo": 1500.0
+  },
+  "output": {
+    "pf": {
+      "rendimento_anual": 1440000.0,
+      "inss": 4800.0,
+      "irpf": 377767.50000000006,
+      "iss": 1500.0,
+      "total_tributos": 384067.50000000006,
+      "aliquota_efetiva": 0.2667135416666667,
+      "receita_liquida": 989632.5,
+      "renda_liquida": 1373700.0,
+      "total_despesas": 66300.0
+    },
+    "pj": {
+      "base_presumida": 460800.0,
+      "base_presumida_irpj": 460800.0,
+      "base_presumida_csll": 460800.0,
+      "irpj": 69120.0,
+      "irpj_adicional": 22080.0,
+      "irpj_total": 91200.0,
+      "csll": 41472.0,
+      "irpj_csll": 132672.0,
+      "pis": 9360.0,
+      "cofins": 43200.0,
+      "cbs": 0.0,
+      "ibs": 0.0,
+      "iss": 1500.0,
+      "inss_folha": 33600.0,
+      "total_impostos": 220332.0,
+      "lucro_liquido": 811668.0,
+      "dividendos": 811668.0,
+      "irpf_m_percent": 3.527799999999999,
+      "impacto_pf": 28634.023703999992,
+      "aliquota_efetiva_final": 0.17289307201666665,
+      "pro_labore_liquido": 128160.0
+    },
+    "comparativo": {
+      "economia_tributaria": 135101.47629600007,
+      "aliquota_pf": 0.2667135416666667,
+      "aliquota_pj_final": 0.17289307201666665,
+      "receita_liquida_pf": 989632.5,
+      "lucro_liquido_pj": 811668.0
+    }
+  }
+}
