@@ -12,7 +12,7 @@ import requests
 from flask import Flask, Response, jsonify, render_template, request, send_from_directory
 
 from backend.calculations import calculate_all
-from backend.constants import DEFAULT_MIN_WAGE, get_rules, save_rules
+from backend.constants import get_rules, save_rules
 
 BASE_DIR = Path(__file__).resolve().parent
 FRONTEND_DIR = BASE_DIR / "frontend"
@@ -31,7 +31,15 @@ else:
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def _get_credentials() -> Dict[str, str]:
+@app.after_request
+def add_cors_headers(response: Response) -> Response:
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-Auth-Token"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    return response
+
+
+def _get_credentials_with_source() -> tuple[Dict[str, str], str]:
     def _normalize_env_credential(value: Optional[str]) -> Optional[str]:
         if value is None:
             return None
@@ -44,19 +52,29 @@ def _get_credentials() -> Dict[str, str]:
         "ADMIN_LOGIN": _normalize_env_credential(os.getenv("ADMIN_LOGIN")),
         "ADMIN_PASSWORD": _normalize_env_credential(os.getenv("ADMIN_PASSWORD")),
     }
+    source = "env"
     if not env["ADMIN_LOGIN"] or not env["ADMIN_PASSWORD"]:
         env_path = BASE_DIR / ".env"
         if env_path.exists():
+            source = ".env"
             for line in env_path.read_text(encoding="utf-8").splitlines():
                 if not line or line.strip().startswith("#") or "=" not in line:
                     continue
                 key, value = line.split("=", 1)
                 if key.strip() in ("ADMIN_LOGIN", "ADMIN_PASSWORD"):
                     env[key.strip()] = _normalize_env_credential(value)
-    return {
+    creds = {
         "login": env.get("ADMIN_LOGIN") or "admin",
         "password": env.get("ADMIN_PASSWORD") or "admin123",
     }
+    if creds["login"] == "admin" and creds["password"] == "admin123":
+        source = "defaults"
+    return creds, source
+
+
+def _get_credentials() -> Dict[str, str]:
+    creds, _ = _get_credentials_with_source()
+    return creds
 
 
 def _make_token(login: str, password: str) -> str:
@@ -291,7 +309,6 @@ def _parse_calculation_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
         "rendimento_mensal": _to_float(rendimento_mensal, "rendimento_mensal"),
         "pro_labore": _to_float(payload.get("pro_labore"), "pro_labore"),
         "iss_fixo": _to_float(payload.get("iss_fixo"), "iss_fixo"),
-        "salario_minimo": _to_float(payload.get("salario_minimo"), "salario_minimo"),
         "annual_expenses": annual_expenses,
     }
 
@@ -311,8 +328,21 @@ def login() -> Any:
     payload = _get_payload()
     if payload is None:
         return _json_error("Payload invalido", 400)
-    credentials = _get_credentials()
-    if payload.get("login") != credentials["login"] or payload.get("senha") != credentials["password"]:
+    credentials, source = _get_credentials_with_source()
+    payload_login = str(payload.get("login") or "")
+    payload_senha = str(payload.get("senha") or "")
+    if payload_login != credentials["login"] or payload_senha != credentials["password"]:
+        print(
+            "[auth] login failed",
+            {
+                "source": source,
+                "payload_login": payload_login,
+                "expected_login": credentials["login"],
+                "payload_password_len": len(payload_senha),
+                "expected_password_len": len(credentials["password"]),
+            },
+            flush=True,
+        )
         return _json_error("Credenciais invalidas", 401)
     token = _make_token(credentials["login"], credentials["password"])
     return jsonify({"token": token})
@@ -337,12 +367,10 @@ def calculate() -> Any:
         annual_expenses=parsed["annual_expenses"],
         pro_labore_monthly=parsed["pro_labore"],
         iss_fixo=parsed["iss_fixo"],
-        salario_minimo=parsed["salario_minimo"] or DEFAULT_MIN_WAGE,
     )
 
     result["assumptions"] = {
         "annual_expenses": parsed["annual_expenses"]["total"],
-        "min_wage_used": parsed["salario_minimo"] or DEFAULT_MIN_WAGE,
         "presumed_profit_regime": rules["pj"]["presumed_profit_regime"],
         "standard_irpj_presumed_rate": rules["pj"]["standard_irpj_presumed_rate"],
         "standard_csll_presumed_rate": rules["pj"]["standard_csll_presumed_rate"],
@@ -376,7 +404,6 @@ def save_simulation() -> Any:
         annual_expenses=parsed["annual_expenses"],
         pro_labore_monthly=parsed["pro_labore"],
         iss_fixo=parsed["iss_fixo"],
-        salario_minimo=parsed["salario_minimo"] or DEFAULT_MIN_WAGE,
     )
 
     now = datetime.now()
@@ -399,7 +426,6 @@ def save_simulation() -> Any:
             },
             "pro_labore": parsed.get("pro_labore"),
             "iss_fixo": parsed.get("iss_fixo"),
-            "salario_minimo": parsed.get("salario_minimo"),
         },
         "output": result,
     }
@@ -525,3 +551,7 @@ def kv_health() -> Any:
         return jsonify({"status": "ok", "value": value})
     except Exception as exc:
         return _json_error(f"KV erro: {exc}", 500)
+
+
+if __name__ == "__main__":
+    app.run(host="127.0.0.1", port=8000, debug=True)

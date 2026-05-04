@@ -14,7 +14,6 @@ def test_calculo_planilha_referencia():
         },
         "pro_labore_monthly": 1621,
         "iss_fixo": 1500,
-        "salario_minimo": 1621,
     }
     inputs["annual_expenses"]["total"] = (
         inputs["annual_expenses"]["secretaria"]
@@ -28,20 +27,21 @@ def test_calculo_planilha_referencia():
     pj = result["pj"]
     comp = result["comparativo"]
 
-    assert pf["inss"] == pytest.approx(5124.2, rel=1e-6)
-    assert pf["irpf"] == pytest.approx(244028.345, rel=1e-6)
-    assert pf["total_tributos"] == pytest.approx(250652.545, rel=1e-6)
-    assert pf["receita_liquida"] == pytest.approx(636723.255, rel=1e-6)
-    assert pf["aliquota_efetiva"] == pytest.approx(0.2610964010416667, rel=1e-6)
+    assert pf["inss"] == pytest.approx(4800.0, rel=1e-6)
+    assert pf["irpf"] == pytest.approx(244117.5, rel=1e-6)
+    assert pf["total_tributos"] == pytest.approx(250417.5, rel=1e-6)
+    assert pf["receita_liquida"] == pytest.approx(637282.5, rel=1e-6)
+    assert pf["aliquota_efetiva"] == pytest.approx(0.2608515625, rel=1e-6)
 
     assert pj["base_presumida_irpj"] == pytest.approx(76800.0, rel=1e-6)
     assert pj["base_presumida_csll"] == pytest.approx(115200.0, rel=1e-6)
-    assert pj["total_impostos"] == pytest.approx(63228.04, rel=1e-6)
-    assert pj["lucro_liquido"] == pytest.approx(725867.96, rel=1e-6)
-    assert pj["impacto_pf"] == pytest.approx(15227.253225760262, rel=1e-6)
-    assert pj["aliquota_efetiva_final"] == pytest.approx(0.08172426377683362, rel=1e-6)
+    assert pj["inss_folha"] == pytest.approx(8690.4, rel=1e-6)
+    assert pj["total_impostos"] == pytest.approx(67118.4, rel=1e-6)
+    assert pj["lucro_liquido"] == pytest.approx(721977.6, rel=1e-6)
+    assert pj["impacto_pf"] == pytest.approx(14677.515816959994, rel=1e-6)
+    assert pj["aliquota_efetiva_final"] == pytest.approx(0.08520407897599998, rel=1e-6)
 
-    assert comp["economia_tributaria"] == pytest.approx(172197.25177423976, rel=1e-6)
+    assert comp["economia_tributaria"] == pytest.approx(168621.58418304005, rel=1e-6)
 
 
 def test_calculo_regime_hospitalar(monkeypatch):
@@ -85,7 +85,6 @@ def test_calculo_regime_hospitalar(monkeypatch):
         },
         "pro_labore_monthly": 1621,
         "iss_fixo": 1500,
-        "salario_minimo": 1621,
     }
 
     result = calculate_all(**inputs)
@@ -93,5 +92,6 @@ def test_calculo_regime_hospitalar(monkeypatch):
 
     assert pj["base_presumida_irpj"] == pytest.approx(307200.0, rel=1e-6)
     assert pj["base_presumida_csll"] == pytest.approx(307200.0, rel=1e-6)
-    assert pj["irpj_total"] == pytest.approx(49080.0, rel=1e-6)
+    assert pj["irpj_total"] == pytest.approx(52800.0, rel=1e-6)
     assert pj["csll"] == pytest.approx(27648.0, rel=1e-6)
+    assert pj["inss_folha"] == pytest.approx(8690.4, rel=1e-6)

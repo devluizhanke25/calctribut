@@ -3,7 +3,7 @@
 from dataclasses import asdict, dataclass
 from typing import Dict
 
-from .constants import DEFAULT_MIN_WAGE, get_rules
+from .constants import get_rules
 
 
 @dataclass
@@ -61,7 +61,6 @@ def calculate_pf(
     monthly_income: float,
     annual_expenses: float,
     iss_fixo: float,
-    salario_minimo: float,
     secretaria_anual: float,
 ) -> PFResult:
     """Reproduz as formulas da planilha para Pessoa Fisica."""
@@ -70,8 +69,8 @@ def calculate_pf(
 
     annual_income = monthly_income * 12
 
-    # INSS conforme planilha: (salario minimo * 20%) + (secretaria * 20%)
-    inss = (salario_minimo * pf_rules["inss_pf_rate"]) + (secretaria_anual * pf_rules["inss_pf_rate"])
+    # INSS PF segue a base anual de custos com secretaria.
+    inss = secretaria_anual * pf_rules["inss_pf_rate"]
 
     total_despesas = annual_expenses + inss + iss_fixo
     renda_liquida = annual_income - total_despesas
@@ -123,9 +122,10 @@ def calculate_pj(
     ibs = annual_income * pj_rules["ibs_rate"] if pj_rules.get("ibs_enabled") else 0.0
     iss = iss_fixo
 
-    # INSS folha pagamento conforme planilha: (secretaria + 0.2) * 20%
+    # INSS folha PJ: 20% sobre (secretaria + pro-labore anual)
     secretaria_anual = annual_expenses.get("secretaria", 0.0)
-    inss_folha = (secretaria_anual + pj_rules["inss_folha_rate"]) * pj_rules["inss_folha_rate"]
+    pro_labore_anual = pro_labore_monthly * 12
+    inss_folha = (secretaria_anual + pro_labore_anual) * pj_rules["inss_folha_rate"]
 
     total_impostos = (
         irpj_csll
@@ -137,7 +137,6 @@ def calculate_pj(
         + inss_folha
     )
 
-    pro_labore_anual = pro_labore_monthly * 12
     total_despesas = annual_expenses["total"] + pro_labore_anual
 
     if pj_rules.get("double_expense_in_pj"):
@@ -187,15 +186,11 @@ def calculate_all(
     annual_expenses: Dict[str, float],
     pro_labore_monthly: float,
     iss_fixo: float,
-    salario_minimo: float,
 ) -> Dict[str, Dict[str, float]]:
-    salario_minimo = salario_minimo or DEFAULT_MIN_WAGE
-
     pf = calculate_pf(
         monthly_income,
         annual_expenses["total"],
         iss_fixo,
-        salario_minimo,
         annual_expenses.get("secretaria", 0.0),
     )
     pj = calculate_pj(monthly_income, annual_expenses, pro_labore_monthly, iss_fixo)

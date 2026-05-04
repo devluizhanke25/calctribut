@@ -11,7 +11,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from .calculations import calculate_all
-from .constants import DEFAULT_MIN_WAGE, get_rules, save_rules
+from .constants import get_rules, save_rules
 from .models import CalculationInput
 
 app = FastAPI(title="Simulador Financeiro-Tributario")
@@ -100,13 +100,11 @@ def calculate(payload: CalculationInput, _user: str = Depends(_require_auth)) ->
         annual_expenses=annual_expenses,
         pro_labore_monthly=payload.pro_labore,
         iss_fixo=payload.iss_fixo,
-        salario_minimo=payload.salario_minimo,
     )
 
     # Include some context to help the UI explain assumptions
     result["assumptions"] = {
         "annual_expenses": annual_expenses["total"],
-        "min_wage_used": payload.salario_minimo or DEFAULT_MIN_WAGE,
         "presumed_profit_regime": rules["pj"]["presumed_profit_regime"],
         "standard_irpj_presumed_rate": rules["pj"]["standard_irpj_presumed_rate"],
         "standard_csll_presumed_rate": rules["pj"]["standard_csll_presumed_rate"],
@@ -142,7 +140,6 @@ def save_simulation(payload: CalculationInput, _user: str = Depends(_require_aut
         annual_expenses=annual_expenses,
         pro_labore_monthly=payload.pro_labore,
         iss_fixo=payload.iss_fixo,
-        salario_minimo=payload.salario_minimo,
     )
 
     now = datetime.now()

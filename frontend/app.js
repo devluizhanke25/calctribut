@@ -7,7 +7,6 @@ const defaults = {
   rendimento_mensal: 0,
   pro_labore: 0,
   iss_fixo: 0,
-  salario_minimo: 0,
   secretaria: 0,
   aluguel_condominio: 0,
   contador: 0,
@@ -21,6 +20,8 @@ let lastResult = null;
 const statusLoading = document.getElementById("status-loading");
 const statusError = document.getElementById("status-error");
 const statusIndicator = document.getElementById("status-indicator");
+const saveAlert = document.getElementById("save-alert");
+let isSavingSimulation = false;
 
 const inputs = document.querySelectorAll(".money-input");
 const nameInput = document.getElementById("nome_cliente");
@@ -107,7 +108,6 @@ const consolidatedMap = {
   "cons-rendimento": () => formatCurrency(state.rendimento_mensal),
   "cons-prolabore": () => formatCurrency(state.pro_labore),
   "cons-iss": () => formatCurrency(state.iss_fixo),
-  "cons-salario": () => formatCurrency(state.salario_minimo),
   "cons-despesas": () =>
     formatCurrency(state.secretaria + state.aluguel_condominio + state.contador + state.outras_despesas),
   "cons-pf-rendimento": (d) => formatCurrency(d.pf.rendimento_anual),
@@ -139,7 +139,6 @@ const fieldMap = {
   rendimento_mensal: "rendimento_mensal",
   pro_labore: "pro_labore",
   iss_fixo: "iss_fixo",
-  salario_minimo: "salario_minimo",
   secretaria: "secretaria",
   aluguel_condominio: "aluguel_condominio",
   contador: "contador",
@@ -163,6 +162,8 @@ const outputMap = {
   "cmp-pj-irpj": (data) => data.pj.irpj_total,
   "pj-csll": (data) => data.pj.csll,
   "cmp-pj-csll": (data) => data.pj.csll,
+  "cmp-pj-inss-folha": (data) => data.pj.inss_folha,
+  "cmp-pj-impacto-pf-irpf": (data) => data.pj.impacto_pf,
   "pj-pis": (data) => data.pj.pis,
   "cmp-pj-pis": (data) => data.pj.pis,
   "pj-cofins": (data) => data.pj.cofins,
@@ -341,17 +342,6 @@ function updateExtraCharts(data) {
 
 }
 
-function getParecerText(data) {
-  const economia = data.comparativo.economia_tributaria;
-  if (economia > 0) {
-    return "Com base nas premissas, a estrutura PJ apresenta menor carga tributária total e maior eficiência fiscal, indicando vantagem econômica em relação à PF.";
-  }
-  if (economia < 0) {
-    return "Com base nas premissas, a estrutura PF apresenta melhor resultado tributário total do que a PJ. Recomenda-se manter o modelo PF ou revisar as premissas.";
-  }
-  return "Com base nas premissas, os resultados entre PF e PJ são equivalentes. Avalie outros fatores operacionais antes de decidir.";
-}
-
 async function calculate() {
   if (!getToken()) {
     loginOverlay.classList.remove("hidden");
@@ -375,7 +365,6 @@ async function calculate() {
     },
     pro_labore: state.pro_labore,
     iss_fixo: state.iss_fixo,
-    salario_minimo: state.salario_minimo,
   };
 
   try {
@@ -531,6 +520,8 @@ function hydratePrintArea(data) {
   document.getElementById("print-cmp-pj-iss").textContent = formatCurrency(data.pj.iss);
   document.getElementById("print-cmp-pf-total-tributos").textContent = formatCurrency(data.pf.total_tributos);
   document.getElementById("print-cmp-pj-total-impostos").textContent = formatCurrency(data.pj.total_impostos);
+  document.getElementById("print-cmp-pj-inss").textContent = formatCurrency(data.pj.inss_folha);
+  document.getElementById("print-cmp-pj-irpf").textContent = formatCurrency(data.pj.impacto_pf);
   document.getElementById("print-cmp-pj-impacto-pf").textContent = formatCurrency(data.pj.impacto_pf);
   document.getElementById("print-cmp-pf-aliquota").textContent = formatPercent(data.pf.aliquota_efetiva);
   document.getElementById("print-cmp-pj-aliquota-final").textContent = formatPercent(data.pj.aliquota_efetiva_final);
@@ -546,10 +537,19 @@ function updateConsolidated(data) {
     const value = getter(data);
     el.textContent = value;
   });
-  const parecer = document.getElementById("cons-parecer");
-  if (parecer) {
-    parecer.textContent = getParecerText(data);
-  }
+}
+
+function annotateComparisonTables() {
+  document.querySelectorAll(".compare-table:not(.print-compare-table)").forEach((table) => {
+    const headers = Array.from(table.querySelectorAll("thead th")).map((th) => th.textContent?.trim() || "");
+    table.querySelectorAll("tbody tr").forEach((row) => {
+      const cells = row.querySelectorAll("td");
+      cells.forEach((cell, index) => {
+        const label = headers[index] || `Coluna ${index + 1}`;
+        cell.setAttribute("data-label", label);
+      });
+    });
+  });
 }
 
 async function generatePdf() {
@@ -660,6 +660,9 @@ if (pdfButton) {
 
 document.getElementById("save-session").addEventListener("click", async (event) => {
   event.preventDefault();
+  if (isSavingSimulation) return;
+  const saveButton = event.currentTarget;
+  const saveStartedAt = Date.now();
   try {
     if (!getToken()) {
       loginOverlay.classList.remove("hidden");
@@ -670,6 +673,11 @@ document.getElementById("save-session").addEventListener("click", async (event) 
       statusError.classList.remove("hidden");
       return;
     }
+    isSavingSimulation = true;
+    if (saveButton) saveButton.disabled = true;
+    statusError.classList.add("hidden");
+    statusIndicator.textContent = "Salvando simulação...";
+    saveAlert?.classList.remove("hidden");
     const response = await authFetch(`${API_BASE}/simulations`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -685,7 +693,6 @@ document.getElementById("save-session").addEventListener("click", async (event) 
         },
         pro_labore: state.pro_labore,
         iss_fixo: state.iss_fixo,
-        salario_minimo: state.salario_minimo,
       }),
     });
 
@@ -694,10 +701,20 @@ document.getElementById("save-session").addEventListener("click", async (event) 
     }
     await loadHistory();
     await loadAnalysis();
-    statusIndicator.textContent = "Nova sessão salva";
+    statusIndicator.textContent = "Simulação salva com sucesso";
   } catch (error) {
     statusError.textContent = "Nao foi possivel salvar a simulacao.";
     statusError.classList.remove("hidden");
+    statusIndicator.textContent = "Falha ao salvar simulação";
+  } finally {
+    const minVisibleMs = 900;
+    const elapsedMs = Date.now() - saveStartedAt;
+    if (elapsedMs < minVisibleMs) {
+      await new Promise((resolve) => setTimeout(resolve, minVisibleMs - elapsedMs));
+    }
+    saveAlert?.classList.add("hidden");
+    if (saveButton) saveButton.disabled = false;
+    isSavingSimulation = false;
   }
 });
 
@@ -758,7 +775,6 @@ async function loadSimulation(id) {
   state.rendimento_mensal = input.rendimento_mensal || 0;
   state.pro_labore = input.pro_labore || 0;
   state.iss_fixo = input.iss_fixo || 0;
-  state.salario_minimo = input.salario_minimo || 0;
 
   state.secretaria = input.despesas_anuais?.secretaria || 0;
   state.aluguel_condominio = input.despesas_anuais?.aluguel_condominio || 0;
@@ -768,7 +784,6 @@ async function loadSimulation(id) {
   setInputValue("rendimento_mensal", state.rendimento_mensal);
   setInputValue("pro_labore", state.pro_labore);
   setInputValue("iss_fixo", state.iss_fixo);
-  setInputValue("salario_minimo", state.salario_minimo);
   setInputValue("secretaria", state.secretaria);
   setInputValue("aluguel_condominio", state.aluguel_condominio);
   setInputValue("contador", state.contador);
@@ -874,6 +889,7 @@ function enforceLogin() {
 }
 
 initTabs();
+annotateComparisonTables();
 setDefaults();
 enforceLogin();
 

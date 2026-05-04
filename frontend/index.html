@@ -83,7 +83,7 @@
               <label for="pro_labore">Pró-labore mensal (R$)</label>
               <div class="input-wrap">
                 <input id="pro_labore" class="money-input" inputmode="decimal" />
-                <span class="help" data-tip="Salário mensal do sócio. Na planilha, o pró-labore padrão é 1 salário mínimo.">?</span>
+                <span class="help" data-tip="Salário mensal do sócio usado para cálculo de INSS e impacto PF.">?</span>
               </div>
               <small class="error" id="pro_labore_error"></small>
             </div>
@@ -98,24 +98,15 @@
             </div>
 
             <div class="field">
-              <label for="salario_minimo">Salário mínimo mensal (R$)</label>
-              <div class="input-wrap">
-                <input id="salario_minimo" class="money-input" inputmode="decimal" />
-                <span class="help" data-tip="Parâmetro de referência. Na planilha, impacta INSS e pró-labore.">?</span>
-              </div>
-              <small class="error" id="salario_minimo_error"></small>
-            </div>
-
-            <div class="field">
               <label>Regime de presunção do lucro</label>
               <div class="regime-selector">
                 <label class="regime-option" for="presumed_regime_standard">
                   <input id="presumed_regime_standard" type="checkbox" />
-                  <span>Regime padrão (8% para IRPJ e 12% para CSLL)</span>
+                  <span>8% e 12%</span>
                 </label>
                 <label class="regime-option" for="presumed_regime_hospital">
                   <input id="presumed_regime_hospital" type="checkbox" />
-                  <span>Regime hospitalar (32% para ambos)</span>
+                  <span>32%</span>
                 </label>
               </div>
               <small class="error" id="presumed_profit_regime_error"></small>
@@ -248,12 +239,12 @@
               <tr>
                 <td>INSS anual</td>
                 <td><strong id="cmp-pf-inss">R$ 0,00</strong></td>
-                <td class="compare-empty">Incluído no impacto do pró-labore.</td>
+                <td><strong id="cmp-pj-inss-folha">R$ 0,00</strong></td>
               </tr>
               <tr>
                 <td>IRPF anual</td>
                 <td><strong id="cmp-pf-irpf">R$ 0,00</strong></td>
-                <td class="compare-empty">Incluído no impacto do pró-labore.</td>
+                <td><strong id="cmp-pj-impacto-pf-irpf">R$ 0,00</strong></td>
               </tr>
               <tr>
                 <td>IRPJ</td>
@@ -465,24 +456,24 @@
               <div class="regime-selector config-regime-selector">
                 <label class="regime-option" for="config-regime-standard">
                   <input id="config-regime-standard" name="config-regime" type="radio" />
-                  <span>Regime padrão</span>
+                  <span>8% e 12%</span>
                 </label>
                 <label class="regime-option" for="config-regime-hospital">
                   <input id="config-regime-hospital" name="config-regime" type="radio" />
-                  <span>Regime hospitalar</span>
+                  <span>32%</span>
                 </label>
               </div>
               <div class="config-inline-grid">
                 <div class="field">
-                  <label for="config-pj-standard-irpj-presumed-rate">Base presumida IRPJ padrão (%)</label>
+                  <label for="config-pj-standard-irpj-presumed-rate">Base presumida IRPJ (opção 8% e 12%) (%)</label>
                   <input id="config-pj-standard-irpj-presumed-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
                 </div>
                 <div class="field">
-                  <label for="config-pj-standard-csll-presumed-rate">Base presumida CSLL padrão (%)</label>
+                  <label for="config-pj-standard-csll-presumed-rate">Base presumida CSLL (opção 8% e 12%) (%)</label>
                   <input id="config-pj-standard-csll-presumed-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
                 </div>
                 <div class="field">
-                  <label for="config-pj-hospital-presumed-rate">Base presumida hospitalar (%)</label>
+                  <label for="config-pj-hospital-presumed-rate">Base presumida (opção 32%) (%)</label>
                   <input id="config-pj-hospital-presumed-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" />
                 </div>
               </div>
@@ -569,7 +560,6 @@
               <div><span>Rendimento mensal</span><strong id="cons-rendimento">R$ 0,00</strong></div>
               <div><span>Pró-labore mensal</span><strong id="cons-prolabore">R$ 0,00</strong></div>
               <div><span>ISS fixo anual</span><strong id="cons-iss">R$ 0,00</strong></div>
-              <div><span>Salário mínimo</span><strong id="cons-salario">R$ 0,00</strong></div>
               <div><span>Despesas anuais</span><strong id="cons-despesas">R$ 0,00</strong></div>
             </div>
           </div>
@@ -611,8 +601,6 @@
               <div><span>Receita líquida PF</span><strong id="cons-comp-receita-pf">R$ 0,00</strong></div>
               <div><span>Lucro líquido PJ</span><strong id="cons-comp-lucro-pj">R$ 0,00</strong></div>
             </div>
-            <h3>Parecer final</h3>
-            <p id="cons-parecer" class="muted"></p>
           </div>
         </section>
 
@@ -668,12 +656,12 @@
           <tr>
             <td>INSS anual</td>
             <td><strong id="print-cmp-pf-inss">R$ 0,00</strong></td>
-            <td id="print-cmp-pj-inss">Incluído no impacto do pró-labore.</td>
+            <td><strong id="print-cmp-pj-inss">R$ 0,00</strong></td>
           </tr>
           <tr>
             <td>IRPF anual</td>
             <td><strong id="print-cmp-pf-irpf">R$ 0,00</strong></td>
-            <td id="print-cmp-pj-irpf">Incluído no impacto do pró-labore.</td>
+            <td><strong id="print-cmp-pj-irpf">R$ 0,00</strong></td>
           </tr>
           <tr>
             <td>IRPJ</td>
@@ -748,7 +736,9 @@
       <small id="login-error" class="error"></small>
     </div>
   </div>
-
+  <div id="save-alert" class="save-alert hidden" role="status" aria-live="polite">
+    <div class="save-alert-card">Salvando simulação...</div>
+  </div>
   <script src="./app.js"></script>
 </body>
 </html>
