@@ -3,16 +3,34 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from urllib.parse import quote
+import secrets
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-import requests
 from flask import Flask, Response, jsonify, render_template, request, send_from_directory
 
 from backend.calculations import calculate_all
 from backend.constants import get_rules, save_rules
+from backend.storage import (
+    authenticate_user,
+    count_users,
+    create_user as db_create_user,
+    delete_simulation as db_delete_simulation,
+    delete_user as db_delete_user,
+    ensure_default_user,
+    get_idempotency as db_get_idempotency,
+    get_simulation as db_get_simulation,
+    get_user as db_get_user,
+    init_db,
+    list_simulations as db_list_simulations,
+    list_users as db_list_users,
+    migrate_legacy_json_simulations,
+    save_simulation as db_save_simulation,
+    set_user_role as db_set_user_role,
+    set_idempotency as db_set_idempotency,
+    update_user_password as db_update_user_password,
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 FRONTEND_DIR = BASE_DIR / "frontend"
@@ -25,12 +43,12 @@ app = Flask(
 )
 # Vercel filesystem is read-only except for /tmp.
 if os.getenv("VERCEL") or os.getenv("VERCEL_ENV"):
-    DATA_DIR = Path("/tmp") / "brmsalcalc" / "simulacoes"
+    DB_PATH = Path("/tmp") / "brmsalcalc" / "simulador.db"
 else:
-    DATA_DIR = BASE_DIR / "data" / "simulacoes"
-DATA_DIR.mkdir(parents=True, exist_ok=True)
-IDEMPOTENCY_DIR = DATA_DIR / "_idempotency"
-IDEMPOTENCY_DIR.mkdir(parents=True, exist_ok=True)
+    DB_PATH = BASE_DIR / "data" / "simulador.db"
+init_db(DB_PATH)
+migrate_legacy_json_simulations(DB_PATH, BASE_DIR / "data" / "simulacoes")
+TOKEN_SALT = os.getenv("TOKEN_SALT", "brmsalcalc-token-salt")
 
 
 @app.after_request
@@ -79,82 +97,15 @@ def _get_credentials() -> Dict[str, str]:
     return creds
 
 
+_bootstrap_creds = _get_credentials()
+ensure_default_user(DB_PATH, _bootstrap_creds["login"], _bootstrap_creds["password"])
+db_set_user_role(DB_PATH, _bootstrap_creds["login"], "admin")
+
+
 def _make_token(login: str, password: str) -> str:
-    raw = f"{login}:{password}"
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
-
-
-def _kv_config() -> Optional[Dict[str, str]]:
-    url = os.getenv("KV_REST_API_URL") or os.getenv("UPSTASH_REDIS_REST_URL")
-    token = os.getenv("KV_REST_API_TOKEN") or os.getenv("UPSTASH_REDIS_REST_TOKEN")
-    if not url or not token:
-        return None
-    return {"url": url.rstrip("/"), "token": token}
-
-
-def _kv_request(command: str, *args: str, data: Optional[str] = None) -> Dict[str, Any]:
-    config = _kv_config()
-    if not config:
-        raise RuntimeError("KV nao configurado")
-    path = "/".join([command.lower(), *[quote(str(arg), safe="") for arg in args]])
-    url = f"{config['url']}/{path}"
-    headers = {"Authorization": f"Bearer {config['token']}"}
-    if data is None:
-        response = requests.get(url, headers=headers, timeout=10)
-    else:
-        response = requests.post(url, headers=headers, data=data.encode("utf-8"), timeout=10)
-    response.raise_for_status()
-    payload = response.json()
-    if "error" in payload:
-        raise RuntimeError(payload["error"])
-    return payload
-
-
-def _kv_set(key: str, value: str) -> None:
-    _kv_request("set", key, data=value)
-
-
-def _kv_get(key: str) -> Optional[str]:
-    payload = _kv_request("get", key)
-    return payload.get("result")
-
-
-def _kv_del(key: str) -> None:
-    _kv_request("del", key)
-
-
-def _kv_zadd(key: str, score: float, member: str) -> None:
-    _kv_request("zadd", key, str(score), member)
-
-
-def _kv_zrem(key: str, member: str) -> None:
-    _kv_request("zrem", key, member)
-
-
-def _kv_zrange(key: str, start: int, stop: int, rev: bool = False) -> list[str]:
-    args = [key, str(start), str(stop)]
-    if rev:
-        args.append("REV")
-    payload = _kv_request("zrange", *args)
-    return payload.get("result") or []
-
-
-def _kv_mget(keys: list[str]) -> list[Optional[str]]:
-    if not keys:
-        return []
-    payload = _kv_request("mget", *keys)
-    return payload.get("result") or []
-
-
-def _storage_use_kv() -> bool:
-    return _kv_config() is not None
-
-
-def _require_kv_if_vercel() -> Optional[tuple[Any, int]]:
-    if os.getenv("VERCEL") or os.getenv("VERCEL_ENV"):
-        if not _kv_config():
-            return _json_error("KV nao configurado", 500)
-    return None
+    _ = password
+    signature = hashlib.sha256(f"{login}:{TOKEN_SALT}".encode("utf-8")).hexdigest()
+    return f"{login}.{signature}"
 
 
 def _slugify(value: str) -> str:
@@ -167,34 +118,16 @@ def _stable_json_hash(payload: dict[str, Any]) -> str:
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
-def _idempotency_file(user: str, idem_key: str) -> Path:
-    user_slug = _slugify(user)
-    key_hash = hashlib.sha256(idem_key.encode("utf-8")).hexdigest()
-    path = IDEMPOTENCY_DIR / user_slug
-    path.mkdir(parents=True, exist_ok=True)
-    return path / f"{key_hash}.txt"
-
-
 def _idempotency_get(user: str, idem_key: str) -> Optional[str]:
     if not idem_key:
         return None
-    if _storage_use_kv():
-        return _kv_get(f"idem:{user}:{idem_key}")
-    file_path = _idempotency_file(user, idem_key)
-    if not file_path.exists():
-        return None
-    value = file_path.read_text(encoding="utf-8").strip()
-    return value or None
+    return db_get_idempotency(DB_PATH, user, idem_key)
 
 
 def _idempotency_set(user: str, idem_key: str, sim_id: str) -> None:
     if not idem_key:
         return
-    if _storage_use_kv():
-        _kv_set(f"idem:{user}:{idem_key}", sim_id)
-        return
-    file_path = _idempotency_file(user, idem_key)
-    file_path.write_text(sim_id, encoding="utf-8")
+    db_set_idempotency(DB_PATH, user, idem_key, sim_id)
 
 
 def _find_duplicate_same_date(parsed: dict[str, Any], target_date: datetime) -> Optional[dict[str, Any]]:
@@ -242,84 +175,46 @@ def _find_duplicate_same_date(parsed: dict[str, Any], target_date: datetime) -> 
 
 
 def _load_records() -> list[dict[str, Any]]:
-    if _storage_use_kv():
-        ids = _kv_zrange("sim:index", 0, -1, rev=True)
-        keys = [f"sim:{sim_id}" for sim_id in ids]
-        raw_items = _kv_mget(keys)
-        records: list[dict[str, Any]] = []
-        for raw in raw_items:
-            if not raw:
-                continue
-            try:
-                records.append(json.loads(raw))
-            except json.JSONDecodeError:
-                continue
-        return records
-
-    records: list[dict[str, Any]] = []
-    for path in DATA_DIR.rglob("*.json"):
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            continue
-        records.append(payload)
-    return records
+    return db_list_simulations(DB_PATH)
 
 
 def _save_record(record: dict[str, Any]) -> None:
-    if _storage_use_kv():
-        sim_id = record["id"]
-        key = f"sim:{sim_id}"
-        _kv_set(key, json.dumps(record, ensure_ascii=False, indent=2))
-        created_at = record.get("created_at") or datetime.now().isoformat()
-        score = datetime.fromisoformat(created_at).timestamp()
-        _kv_zadd("sim:index", score, sim_id)
-        return
-
-    sim_id = record["id"]
-    path = DATA_DIR / f"{sim_id}.json"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
+    db_save_simulation(DB_PATH, record)
 
 
 def _get_record(sim_id: str) -> Optional[dict[str, Any]]:
-    if _storage_use_kv():
-        key = f"sim:{sim_id}"
-        raw = _kv_get(key)
-        if not raw:
-            return None
-        try:
-            return json.loads(raw)
-        except json.JSONDecodeError:
-            return None
-
-    path = DATA_DIR / f"{sim_id}.json"
-    if not path.exists():
-        return None
-    return json.loads(path.read_text(encoding="utf-8"))
+    return db_get_simulation(DB_PATH, sim_id)
 
 
 def _delete_record(sim_id: str) -> None:
-    if _storage_use_kv():
-        key = f"sim:{sim_id}"
-        _kv_del(key)
-        _kv_zrem("sim:index", sim_id)
-        return
-
-    path = DATA_DIR / f"{sim_id}.json"
-    if path.exists():
-        path.unlink()
+    db_delete_simulation(DB_PATH, sim_id)
 
 
-def _require_auth() -> Optional[str]:
+def _require_auth() -> Optional[dict[str, str]]:
     token = request.headers.get("X-Auth-Token")
     if not token:
         return None
-    credentials = _get_credentials()
-    expected = _make_token(credentials["login"], credentials["password"])
-    if token != expected:
+    if "." not in token:
         return None
-    return credentials["login"]
+    login, signature = token.split(".", 1)
+    if not login or not signature:
+        return None
+    expected_signature = hashlib.sha256(f"{login}:{TOKEN_SALT}".encode("utf-8")).hexdigest()
+    if not secrets.compare_digest(signature, expected_signature):
+        return None
+    user = db_get_user(DB_PATH, login)
+    if not user:
+        return None
+    return {"login": str(user["login"]), "role": str(user.get("role") or "analista")}
+
+
+def _require_admin() -> Optional[dict[str, str]]:
+    user = _require_auth()
+    if not user:
+        return None
+    if user.get("role") != "admin":
+        return None
+    return user
 
 
 def _json_error(message: str, status_code: int) -> tuple[Any, int]:
@@ -409,24 +304,13 @@ def login() -> Any:
     payload = _get_payload()
     if payload is None:
         return _json_error("Payload invalido", 400)
-    credentials, source = _get_credentials_with_source()
     payload_login = str(payload.get("login") or "")
     payload_senha = str(payload.get("senha") or "")
-    if payload_login != credentials["login"] or payload_senha != credentials["password"]:
-        print(
-            "[auth] login failed",
-            {
-                "source": source,
-                "payload_login": payload_login,
-                "expected_login": credentials["login"],
-                "payload_password_len": len(payload_senha),
-                "expected_password_len": len(credentials["password"]),
-            },
-            flush=True,
-        )
+    if not authenticate_user(DB_PATH, payload_login, payload_senha):
         return _json_error("Credenciais invalidas", 401)
-    token = _make_token(credentials["login"], credentials["password"])
-    return jsonify({"token": token})
+    token = _make_token(payload_login, payload_senha)
+    user = db_get_user(DB_PATH, payload_login) or {}
+    return jsonify({"token": token, "role": user.get("role", "analista")})
 
 
 @app.post("/calculate")
@@ -465,7 +349,8 @@ def calculate() -> Any:
 
 @app.post("/simulations")
 def save_simulation() -> Any:
-    auth_user = _require_auth()
+    auth_ctx = _require_auth()
+    auth_user = auth_ctx["login"] if auth_ctx else None
     if not auth_user:
         return _json_error("Nao autorizado", 401)
 
@@ -614,21 +499,98 @@ def analysis() -> Any:
 
 @app.get("/config")
 def get_config() -> Any:
-    if not _require_auth():
+    auth_user = _require_auth()
+    if not auth_user:
         return _json_error("Nao autorizado", 401)
+    if auth_user["role"] != "admin":
+        return _json_error("Acesso restrito a administradores", 403)
     return jsonify(get_rules())
 
 
 @app.put("/config")
 def update_config() -> Any:
-    if not _require_auth():
+    auth_user = _require_auth()
+    if not auth_user:
         return _json_error("Nao autorizado", 401)
+    if auth_user["role"] != "admin":
+        return _json_error("Acesso restrito a administradores", 403)
 
     payload = _get_payload()
     if not isinstance(payload, dict):
         return _json_error("Formato invalido", 400)
     save_rules(payload)
     return jsonify({"status": "updated"})
+
+
+@app.get("/users")
+def list_users() -> Any:
+    auth_user = _require_auth()
+    if not auth_user:
+        return _json_error("Nao autorizado", 401)
+    if auth_user["role"] != "admin":
+        return _json_error("Acesso restrito a administradores", 403)
+    return jsonify(db_list_users(DB_PATH))
+
+
+@app.post("/users")
+def create_user() -> Any:
+    auth_user = _require_auth()
+    if not auth_user:
+        return _json_error("Nao autorizado", 401)
+    if auth_user["role"] != "admin":
+        return _json_error("Acesso restrito a administradores", 403)
+    payload = _get_payload()
+    if payload is None:
+        return _json_error("Payload invalido", 400)
+    login = str(payload.get("login") or "").strip()
+    senha = str(payload.get("senha") or "")
+    if len(login) < 3:
+        return _json_error("Login deve ter ao menos 3 caracteres", 400)
+    if len(senha) < 6:
+        return _json_error("Senha deve ter ao menos 6 caracteres", 400)
+    role = str(payload.get("role") or "analista").strip().lower()
+    if role not in ("admin", "analista"):
+        return _json_error("Perfil invalido", 400)
+    if db_get_user(DB_PATH, login):
+        return _json_error("Usuario ja existe", 409)
+    db_create_user(DB_PATH, login, senha, role)
+    return jsonify({"status": "created", "login": login, "role": role})
+
+
+@app.put("/users/<login>")
+def update_user(login: str) -> Any:
+    auth_user = _require_auth()
+    if not auth_user:
+        return _json_error("Nao autorizado", 401)
+    if auth_user["role"] != "admin":
+        return _json_error("Acesso restrito a administradores", 403)
+    payload = _get_payload()
+    if payload is None:
+        return _json_error("Payload invalido", 400)
+    senha = str(payload.get("senha") or "")
+    if len(senha) < 6:
+        return _json_error("Senha deve ter ao menos 6 caracteres", 400)
+    if not db_update_user_password(DB_PATH, login, senha):
+        return _json_error("Usuario nao encontrado", 404)
+    return jsonify({"status": "updated", "login": login})
+
+
+@app.delete("/users/<login>")
+def delete_user(login: str) -> Any:
+    auth_user = _require_auth()
+    if not auth_user:
+        return _json_error("Nao autorizado", 401)
+    if auth_user["role"] != "admin":
+        return _json_error("Acesso restrito a administradores", 403)
+    if auth_user["login"] == login:
+        return _json_error("Nao e permitido excluir o proprio usuario logado", 400)
+    user = db_get_user(DB_PATH, login)
+    if not user:
+        return _json_error("Usuario nao encontrado", 404)
+    if count_users(DB_PATH) <= 1:
+        return _json_error("Nao e permitido remover o ultimo usuario", 400)
+    db_delete_user(DB_PATH, login)
+    return jsonify({"status": "deleted", "login": login})
 
 
 @app.get("/simulations/")
@@ -644,19 +606,6 @@ def analysis_slash() -> Any:
 @app.get("/config/")
 def config_slash() -> Any:
     return get_config()
-
-
-@app.get("/kv-health")
-def kv_health() -> Any:
-    config = _kv_config()
-    if not config:
-        return _json_error("KV nao configurado", 500)
-    try:
-        _kv_set("kv:health", "ok")
-        value = _kv_get("kv:health")
-        return jsonify({"status": "ok", "value": value})
-    except Exception as exc:
-        return _json_error(f"KV erro: {exc}", 500)
 
 
 if __name__ == "__main__":

@@ -63,6 +63,12 @@ const configPjInssFolhaRateInput = document.getElementById("config-pj-inss-folha
 const configPjCbsEnabledInput = document.getElementById("config-pj-cbs-enabled");
 const configPjIbsEnabledInput = document.getElementById("config-pj-ibs-enabled");
 const configPjDoubleExpenseInput = document.getElementById("config-pj-double-expense-in-pj");
+const usersList = document.getElementById("users-list");
+const newUserLoginInput = document.getElementById("new-user-login");
+const newUserPasswordInput = document.getElementById("new-user-password");
+const newUserRoleInput = document.getElementById("new-user-role");
+const createUserButton = document.getElementById("create-user-btn");
+const refreshUsersButton = document.getElementById("refresh-users-btn");
 const presumedRegimeStandard = document.getElementById("presumed_regime_standard");
 const presumedRegimeHospital = document.getElementById("presumed_regime_hospital");
 let currentConfig = null;
@@ -253,6 +259,31 @@ function setToken(token) {
   localStorage.setItem("auth_token", token);
 }
 
+function getRole() {
+  return localStorage.getItem("auth_role") || "analista";
+}
+
+function setRole(role) {
+  localStorage.setItem("auth_role", role || "analista");
+}
+
+function clearAuth() {
+  localStorage.removeItem("auth_token");
+  localStorage.removeItem("auth_role");
+}
+
+function applyAccessControl() {
+  const isAdmin = getRole() === "admin";
+  const tabParametros = document.querySelector('.tab[data-tab="parametros"]');
+  const tabConfiguracoes = document.querySelector('.tab[data-tab="configuracoes"]');
+  if (tabParametros) tabParametros.style.display = isAdmin ? "" : "none";
+  if (tabConfiguracoes) tabConfiguracoes.style.display = isAdmin ? "" : "none";
+  const activePanel = document.querySelector(".panel.active");
+  if (!isAdmin && (activePanel?.id === "parametros" || activePanel?.id === "configuracoes")) {
+    activateTab("premissas");
+  }
+}
+
 async function authFetch(url, options = {}) {
   const token = getToken();
   if (!token) {
@@ -268,7 +299,7 @@ async function authFetch(url, options = {}) {
     },
   });
   if (response.status === 401) {
-    localStorage.removeItem("auth_token");
+    clearAuth();
     loginOverlay.classList.remove("hidden");
     throw new Error("Não autorizado");
   }
@@ -885,11 +916,14 @@ async function handleLogin() {
   }
   const data = await response.json();
   setToken(data.token);
+  setRole(data.role || "analista");
+  applyAccessControl();
   loginOverlay.classList.add("hidden");
   calculate();
   loadHistory();
   loadAnalysis();
   loadConfig();
+  loadUsers();
 }
 
 if (loginButton) {
@@ -919,12 +953,17 @@ function enforceLogin() {
   const token = getToken();
   if (!token) {
     loginOverlay.classList.remove("hidden");
+    applyAccessControl();
     return;
   }
+  applyAccessControl();
   loginOverlay.classList.add("hidden");
   loadHistory();
   loadAnalysis();
-  loadConfig();
+  if (getRole() === "admin") {
+    loadConfig();
+    loadUsers();
+  }
 }
 
 initTabs();
@@ -959,15 +998,152 @@ if (sidebarClose) {
 
 if (logoutButton) {
   logoutButton.addEventListener("click", () => {
-    localStorage.removeItem("auth_token");
+    clearAuth();
     setDefaults();
+    applyAccessControl();
     loginOverlay.classList.remove("hidden");
     statusIndicator.textContent = "Faça login para continuar";
     statusError.classList.add("hidden");
+    if (usersList) usersList.innerHTML = "";
   });
 }
 
+async function loadUsers() {
+  if (getRole() !== "admin") return;
+  if (!usersList || !getToken()) return;
+  usersList.innerHTML = "";
+  try {
+    const response = await authFetch(`${API_BASE}/users`);
+    if (!response.ok) return;
+    const users = await response.json();
+    if (!users.length) {
+      usersList.innerHTML = "<p class=\"muted\">Nenhum usuário cadastrado.</p>";
+      return;
+    }
+    users.forEach((user) => {
+      const row = document.createElement("div");
+      row.className = "list-row user-list-row";
+      row.innerHTML = `
+        <span>${user.login || "-"}</span>
+        <span>${user.created_at ? new Date(user.created_at).toLocaleDateString("pt-BR") : "-"} • ${user.role || "analista"}</span>
+        <div class="list-actions">
+          <button data-action="reset">Redefinir senha</button>
+          <button data-action="delete">Excluir</button>
+        </div>
+      `;
+      const [resetBtn, deleteBtn] = row.querySelectorAll("button");
+      if (resetBtn) {
+        resetBtn.addEventListener("click", () => resetUserPassword(user.login));
+      }
+      if (deleteBtn) {
+        deleteBtn.addEventListener("click", () => deleteUser(user.login));
+      }
+      usersList.appendChild(row);
+    });
+  } catch (error) {
+    statusError.textContent = "Faça login para acessar usuários.";
+    statusError.classList.remove("hidden");
+  }
+}
+
+async function createUser() {
+  if (!getToken()) return;
+  const login = newUserLoginInput?.value?.trim() || "";
+  const senha = newUserPasswordInput?.value || "";
+  const role = (newUserRoleInput?.value || "analista").toLowerCase();
+  if (login.length < 3) {
+    statusError.textContent = "Login deve ter ao menos 3 caracteres.";
+    statusError.classList.remove("hidden");
+    return;
+  }
+  if (senha.length < 6) {
+    statusError.textContent = "Senha deve ter ao menos 6 caracteres.";
+    statusError.classList.remove("hidden");
+    return;
+  }
+  const response = await authFetch(`${API_BASE}/users`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ login, senha, role }),
+  });
+  if (!response.ok) {
+    let detail = "Falha ao criar usuário.";
+    try {
+      const body = await response.json();
+      if (body?.detail) detail = body.detail;
+    } catch (_) {}
+    statusError.textContent = detail;
+    statusError.classList.remove("hidden");
+    return;
+  }
+  if (newUserLoginInput) newUserLoginInput.value = "";
+  if (newUserPasswordInput) newUserPasswordInput.value = "";
+  if (newUserRoleInput) newUserRoleInput.value = "analista";
+  statusError.classList.add("hidden");
+  statusIndicator.textContent = "Usuário criado com sucesso";
+  loadUsers();
+}
+
+async function resetUserPassword(login) {
+  if (!getToken()) return;
+  const senha = window.prompt(`Nova senha para "${login}" (mínimo 6 caracteres):`, "");
+  if (senha === null) return;
+  if (senha.trim().length < 6) {
+    statusError.textContent = "Senha deve ter ao menos 6 caracteres.";
+    statusError.classList.remove("hidden");
+    return;
+  }
+  const response = await authFetch(`${API_BASE}/users/${encodeURIComponent(login)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ senha: senha.trim() }),
+  });
+  if (!response.ok) {
+    let detail = "Falha ao atualizar senha.";
+    try {
+      const body = await response.json();
+      if (body?.detail) detail = body.detail;
+    } catch (_) {}
+    statusError.textContent = detail;
+    statusError.classList.remove("hidden");
+    return;
+  }
+  statusError.classList.add("hidden");
+  statusIndicator.textContent = "Senha atualizada";
+}
+
+async function deleteUser(login) {
+  if (!getToken()) return;
+  const confirmed = window.confirm(`Excluir usuário "${login}"?`);
+  if (!confirmed) return;
+  const response = await authFetch(`${API_BASE}/users/${encodeURIComponent(login)}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    let detail = "Falha ao excluir usuário.";
+    try {
+      const body = await response.json();
+      if (body?.detail) detail = body.detail;
+    } catch (_) {}
+    statusError.textContent = detail;
+    statusError.classList.remove("hidden");
+    return;
+  }
+  statusError.classList.add("hidden");
+  statusIndicator.textContent = "Usuário excluído";
+  loadUsers();
+}
+
+if (createUserButton) {
+  createUserButton.addEventListener("click", createUser);
+}
+
+if (refreshUsersButton) {
+  refreshUsersButton.addEventListener("click", loadUsers);
+}
+
 async function loadConfig() {
+  if (getRole() !== "admin") return;
   if (!configForm || !getToken()) return;
   try {
     syncConfigForm(DEFAULT_CONFIG);

@@ -6,7 +6,7 @@ Simulador financeiro-tributário para comparar Pessoa Física (PF) vs Pessoa Jur
 - **Frontend**: HTML/CSS/JS puro com layout de dashboard, menu lateral, autenticação simples, histórico, análise, parâmetros e geração de PDF.
 - **Backend**: FastAPI com cálculo financeiro, autenticação, persistência de simulações e endpoints para histórico/análise.
 - **Regras**: parâmetros tributários em JSON (`backend/data/regras_tributarias.json`).
-- **Persistência**: cada simulação salva gera um JSON em `data/simulacoes/<empresa>/<data>.json`.
+- **Persistência**: simulações salvas em banco SQLite (`data/simulador.db`).
 
 ## Estrutura de pastas
 ```
@@ -26,8 +26,8 @@ brmsalcalc/
     app.js
     img/
       logo.png
-  data/
-    simulacoes/
+ data/
+    simulador.db
   tests/
     test_calculos.py
   .env
@@ -62,7 +62,7 @@ http://127.0.0.1:5500/frontend/index.html
 ```
 
 ## Login
-As credenciais ficam no `.env`:
+O primeiro usuário pode vir de `.env` (bootstrap inicial), mas depois os usuários ficam no banco de dados:
 ```
 ADMIN_LOGIN=admin
 ADMIN_PASSWORD=admin123
@@ -76,6 +76,9 @@ ADMIN_PASSWORD=admin123
 - **Histórico**: lista de simulações salvas (carregar / excluir).
 - **Análise**: tabela consolidada de todas as simulações.
 - **Parâmetros**: edição das regras tributárias em JSON.
+- **Configurações**: gestão de usuários (criar, redefinir senha, excluir).
+  - Perfil `admin`: acessa Configurações e Parâmetros.
+  - Perfil `analista`: não acessa Configurações nem Parâmetros.
 - **Logout**: botão Sair no menu lateral.
 
 ## Regras tributárias (JSON)
@@ -116,7 +119,7 @@ pytest
 ## Fluxo de uso
 1. Faça login.
 2. Preencha premissas.
-3. Clique em **Salvar simulação** para gravar JSON.
+3. Clique em **Salvar simulação** para gravar no banco de dados.
 4. Consulte histórico e análise conforme necessário.
 5. Baixe o PDF a partir do comparativo.
 
@@ -130,6 +133,10 @@ pytest
 - `GET /analysis` → dados consolidados.
 - `GET /config` → regras tributárias atuais.
 - `PUT /config` → atualiza regras tributárias.
+- `GET /users` → lista usuários.
+- `POST /users` → cria usuário.
+- `PUT /users/{login}` → redefine senha.
+- `DELETE /users/{login}` → remove usuário.
 
 ## Observações
 - A geração de PDF usa `html2pdf.js` via CDN.

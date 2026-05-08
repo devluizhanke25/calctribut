@@ -375,6 +375,11 @@ body {
   gap: 8px;
 }
 
+.user-list-header,
+.user-list-row {
+  grid-template-columns: 1.4fr 1fr 1.2fr;
+}
+
 .table-wrap {
   overflow-x: auto;
 }

@@ -25,6 +25,7 @@
         <button class="tab" data-tab="analise" role="tab" aria-selected="false">Análise</button>
         <button class="tab" data-tab="parametros" role="tab" aria-selected="false">Parâmetros</button>
         <button class="tab" data-tab="consolidacao" role="tab" aria-selected="false">Consolidação</button>
+        <button class="tab" data-tab="configuracoes" role="tab" aria-selected="false">Configurações</button>
       </nav>
       <button id="logout-btn" class="ghost logout">Sair</button>
       <div class="status" aria-live="polite">
@@ -242,11 +243,6 @@
                 <td><strong id="cmp-pj-inss-folha">R$ 0,00</strong></td>
               </tr>
               <tr>
-                <td>IRPF anual</td>
-                <td><strong id="cmp-pf-irpf">R$ 0,00</strong></td>
-                <td><strong id="cmp-pj-impacto-pf-irpf">R$ 0,00</strong></td>
-              </tr>
-              <tr>
                 <td>IRPJ</td>
                 <td class="compare-empty">Não se aplica.</td>
                 <td><strong id="cmp-pj-irpj">R$ 0,00</strong></td>
@@ -295,6 +291,11 @@
                 <td>Dividendos estimados</td>
                 <td class="compare-empty">Não se aplica.</td>
                 <td><strong id="cmp-pj-dividendos">R$ 0,00</strong></td>
+              </tr>
+              <tr>
+                <td>IRPF-M</td>
+                <td><strong id="cmp-pf-irpf">R$ 0,00</strong></td>
+                <td><strong id="cmp-pj-impacto-pf-irpf">R$ 0,00</strong></td>
               </tr>
             </tbody>
           </table>
@@ -610,6 +611,44 @@
         </div>
       </div>
     </section>
+
+    <section class="panel" id="configuracoes" role="tabpanel">
+      <div class="panel-header">
+        <h2>Configurações</h2>
+        <p class="muted">Gerencie os usuários com acesso ao sistema.</p>
+      </div>
+      <div class="card">
+        <div class="config-inline-grid">
+          <div class="field">
+            <label for="new-user-login">Novo usuário</label>
+            <input id="new-user-login" type="text" placeholder="login" />
+          </div>
+          <div class="field">
+            <label for="new-user-password">Senha</label>
+            <input id="new-user-password" type="password" placeholder="mínimo 6 caracteres" />
+          </div>
+          <div class="field">
+            <label for="new-user-role">Perfil</label>
+            <select id="new-user-role">
+              <option value="analista" selected>Analista</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="create-user-btn" class="primary">Criar usuário</button>
+          <button id="refresh-users-btn" class="ghost">Recarregar lista</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="list-header user-list-header">
+          <span>Login</span>
+          <span>Criado em</span>
+          <span>Ações</span>
+        </div>
+        <div id="users-list" class="list-body"></div>
+      </div>
+    </section>
       <footer class="footer">
         <p>Simulador financeiro-tributário • Brasil Salomão </p>
       </footer>
@@ -657,11 +696,6 @@
             <td>INSS anual</td>
             <td><strong id="print-cmp-pf-inss">R$ 0,00</strong></td>
             <td><strong id="print-cmp-pj-inss">R$ 0,00</strong></td>
-          </tr>
-          <tr>
-            <td>IRPF anual</td>
-            <td><strong id="print-cmp-pf-irpf">R$ 0,00</strong></td>
-            <td><strong id="print-cmp-pj-irpf">R$ 0,00</strong></td>
           </tr>
           <tr>
             <td>IRPJ</td>
@@ -712,6 +746,11 @@
             <td>Dividendos estimados</td>
             <td>Não se aplica.</td>
             <td><strong id="print-cmp-pj-dividendos">R$ 0,00</strong></td>
+          </tr>
+          <tr>
+            <td>IRPF-M</td>
+            <td><strong id="print-cmp-pf-irpf">R$ 0,00</strong></td>
+            <td><strong id="print-cmp-pj-irpf">R$ 0,00</strong></td>
           </tr>
         </tbody>
       </table>

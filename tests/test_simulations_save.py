@@ -1,4 +1,5 @@
 import app as flask_app_module
+from backend.storage import ensure_default_user, init_db
 
 
 def _auth_headers() -> dict[str, str]:
@@ -24,12 +25,11 @@ def _payload() -> dict:
 
 
 def test_save_simulation_idempotency_key_prevents_duplicate(tmp_path, monkeypatch):
-    data_dir = tmp_path / "simulacoes"
-    idem_dir = data_dir / "_idempotency"
-    data_dir.mkdir(parents=True, exist_ok=True)
-    idem_dir.mkdir(parents=True, exist_ok=True)
-    monkeypatch.setattr(flask_app_module, "DATA_DIR", data_dir)
-    monkeypatch.setattr(flask_app_module, "IDEMPOTENCY_DIR", idem_dir)
+    db_path = tmp_path / "simulador_test.db"
+    init_db(db_path)
+    creds = flask_app_module._get_credentials()
+    ensure_default_user(db_path, creds["login"], creds["password"])
+    monkeypatch.setattr(flask_app_module, "DB_PATH", db_path)
 
     client = flask_app_module.app.test_client()
     headers = _auth_headers() | {"Content-Type": "application/json", "X-Idempotency-Key": "same-click"}
@@ -44,12 +44,11 @@ def test_save_simulation_idempotency_key_prevents_duplicate(tmp_path, monkeypatc
 
 
 def test_save_simulation_recent_duplicate_without_key_is_deduplicated(tmp_path, monkeypatch):
-    data_dir = tmp_path / "simulacoes"
-    idem_dir = data_dir / "_idempotency"
-    data_dir.mkdir(parents=True, exist_ok=True)
-    idem_dir.mkdir(parents=True, exist_ok=True)
-    monkeypatch.setattr(flask_app_module, "DATA_DIR", data_dir)
-    monkeypatch.setattr(flask_app_module, "IDEMPOTENCY_DIR", idem_dir)
+    db_path = tmp_path / "simulador_test.db"
+    init_db(db_path)
+    creds = flask_app_module._get_credentials()
+    ensure_default_user(db_path, creds["login"], creds["password"])
+    monkeypatch.setattr(flask_app_module, "DB_PATH", db_path)
 
     client = flask_app_module.app.test_client()
     headers = _auth_headers() | {"Content-Type": "application/json"}
